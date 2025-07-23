@@ -1,10 +1,27 @@
 import { AlertTriangleIcon, EyeOffIcon } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export const Login = (): JSX.Element => {
+  const [, setLocation] = useLocation();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // For now, just navigate to home page
+    // In a real app, you'd validate credentials here
+    setLocation("/home");
+  };
+
+  const handleMicrosoftLogin = () => {
+    // For now, just navigate to home page
+    // In a real app, you'd integrate with Microsoft OAuth
+    setLocation("/home");
+  };
   // Data for links in the login form
   const loginLinks = [
     { text: "Request access...", href: "#" },
@@ -32,7 +49,7 @@ export const Login = (): JSX.Element => {
                   Login
                 </div>
 
-                <div className="inline-flex flex-col items-start gap-2.5 relative flex-[0_0_auto]">
+                <form onSubmit={handleLogin} className="inline-flex flex-col items-start gap-2.5 relative flex-[0_0_auto]">
                   <div className="inline-flex flex-col items-start gap-[3px] relative flex-[0_0_auto]">
                     <label className="relative w-fit mt-[-1.00px] font-sans font-semibold text-black text-xs tracking-[0] leading-normal">
                       Username / email
@@ -40,7 +57,9 @@ export const Login = (): JSX.Element => {
 
                     <div className="flex w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
                       <Input
-                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-[#d7dbdd] text-sm tracking-[0] leading-normal"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
                         placeholder="Enter your email or username..."
                       />
                     </div>
@@ -54,7 +73,9 @@ export const Login = (): JSX.Element => {
                     <div className="flex w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
                       <Input
                         type="password"
-                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-[#d7dbdd] text-sm tracking-[0] leading-normal"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
                         placeholder="Enter your password..."
                       />
 
@@ -63,7 +84,7 @@ export const Login = (): JSX.Element => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </form>
 
                 <div className="flex items-center justify-between px-[5px] py-2.5 relative self-stretch w-full flex-[0_0_auto]">
                   {loginLinks.map((link, index) => (
@@ -78,7 +99,10 @@ export const Login = (): JSX.Element => {
                 </div>
 
                 <div className="flex items-center justify-end self-stretch w-full gap-2.5 relative flex-[0_0_auto]">
-                  <Button className="h-[43px] px-3.5 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base">
+                  <Button 
+                    onClick={handleLogin}
+                    className="h-[43px] px-3.5 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base"
+                  >
                     Login
                   </Button>
                 </div>
@@ -90,6 +114,7 @@ export const Login = (): JSX.Element => {
             </div>
 
             <Button
+              onClick={handleMicrosoftLogin}
               variant="outline"
               className="inline-flex h-[43px] w-full items-center justify-center gap-2.5 px-3.5 py-3 bg-[#f9f9f9] rounded-[21px] border-2 border-solid border-[#d7dbdd] shadow-[0px_2px_4px_#0000000d]"
             >
