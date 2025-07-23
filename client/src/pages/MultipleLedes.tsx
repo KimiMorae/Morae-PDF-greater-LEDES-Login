@@ -1,14 +1,143 @@
-import { AlertTriangleIcon, ArrowLeftIcon, UploadIcon, FilesIcon } from "lucide-react";
+import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const MultipleLedes = (): JSX.Element => {
   return (
-    <div className="bg-white dark:bg-gray-900 flex flex-row justify-center w-full min-h-screen">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-[1728px] relative">
-        {/* Header */}
-        <header className="flex w-full h-[95px] items-center justify-between px-[25px] py-[21px] bg-[#fefefe] dark:bg-gray-800 border-b-2 border-[#f9f9f9] dark:border-gray-700">
+    <div className="bg-white flex flex-row justify-center w-full">
+      <div className="bg-white w-full max-w-[1728px] h-[1117px] relative">
+        <div className="absolute w-full h-[1022px] top-[95px] left-0 bg-[url(/figmaAssets/background-image.png)] bg-cover bg-[50%_50%]">
+          <div className="absolute top-[21px] left-[305px] font-sans font-bold text-black text-[32px] tracking-[0] leading-normal">
+            Multiple LEDES
+          </div>
+
+          <img
+            className="absolute w-[260px] h-2 top-[38px] left-5"
+            alt="Ellipses container"
+            src="/figmaAssets/ellipses-container.png"
+          />
+
+          {/* Back Button */}
+          <Link href="/home">
+            <div className="absolute top-[80px] left-[305px] inline-flex items-center gap-2 cursor-pointer">
+              <ArrowLeftIcon className="w-4 h-4 text-black" />
+              <span className="font-sans font-medium text-black text-sm tracking-[0] leading-normal">
+                Back to Home
+              </span>
+            </div>
+          </Link>
+
+          {/* Main Upload Card */}
+          <div className="flex flex-col w-[700px] items-center gap-[30px] absolute top-[160px] left-[514px]">
+            <Card className="flex flex-col items-start gap-[25px] p-[30px] relative self-stretch w-full flex-[0_0_auto] bg-[#f9f9f9] rounded-[17px_23px_23px_23px] border-2 border-solid border-[#d7dbdd] shadow-[0px_2px_42px_#00000026]">
+              <CardContent className="p-0 space-y-[25px] w-full">
+                <div className="relative w-fit mt-[-2.00px] font-sans font-bold text-black text-xl tracking-[0] leading-normal whitespace-nowrap">
+                  Upload Multiple PDFs
+                </div>
+
+                {/* File Upload Area */}
+                <div className="flex flex-col items-center justify-center w-full h-[320px] bg-white rounded-[12px] border-2 border-dashed border-[#d7dbdd] relative">
+                  <div className="flex flex-col items-center gap-[15px]">
+                    <div className="w-16 h-16 bg-[#d3e4f3] rounded-[8px] flex items-center justify-center">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14 2z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                        <path d="M16 13H8"/>
+                        <path d="M16 17H8"/>
+                        <path d="M10 9H8"/>
+                      </svg>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="font-sans font-semibold text-black text-lg tracking-[0] leading-normal mb-1">
+                        Drop multiple PDF files here
+                      </div>
+                      <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                        or click to browse and select files
+                      </div>
+                    </div>
+
+                    <Button className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base">
+                      Choose Files
+                    </Button>
+
+                    <div className="font-sans font-normal text-[#53585a] text-xs tracking-[0] leading-normal text-center">
+                      Supported format: PDF (max 50MB each, up to 20 files)
+                    </div>
+                  </div>
+                </div>
+
+                {/* File List Area */}
+                <div className="inline-flex flex-col items-start gap-[3px] relative flex-[0_0_auto]">
+                  <label className="relative w-fit mt-[-1.00px] font-sans font-semibold text-black text-xs tracking-[0] leading-normal">
+                    Selected Files (0)
+                  </label>
+
+                  <div className="flex flex-col w-full min-h-[120px] items-center justify-center gap-2.5 p-4 relative bg-white rounded border border-solid border-[#d7dbdd]">
+                    <div className="font-sans font-normal text-[#d7dbdd] text-sm tracking-[0] leading-normal text-center">
+                      No files selected...
+                    </div>
+                  </div>
+                </div>
+
+                {/* Convert Button */}
+                <div className="flex items-center justify-end self-stretch w-full gap-2.5 relative flex-[0_0_auto]">
+                  <Button className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base">
+                    Convert All to LEDES
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Info Cards Row */}
+            <div className="flex flex-row w-full gap-[20px]">
+              {/* Processing Benefits Card */}
+              <Card className="flex flex-col items-start gap-[15px] p-[20px] relative flex-1 bg-[#e8f5e8] rounded-[12px] border border-solid border-[#b3d9b3]">
+                <CardContent className="p-0 space-y-[10px] w-full">
+                  <div className="relative w-fit font-sans font-semibold text-black text-base tracking-[0] leading-normal">
+                    Batch Processing
+                  </div>
+                  
+                  <div className="space-y-[8px]">
+                    <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                      • Process up to 20 files simultaneously
+                    </div>
+                    <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                      • Automated file organization
+                    </div>
+                    <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                      • Progress tracking for each file
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Processing Timeline Card */}
+              <Card className="flex flex-col items-start gap-[15px] p-[20px] relative flex-1 bg-[#e8f4fd] rounded-[12px] border border-solid border-[#b3d9f2]">
+                <CardContent className="p-0 space-y-[10px] w-full">
+                  <div className="relative w-fit font-sans font-semibold text-black text-base tracking-[0] leading-normal">
+                    Processing Time
+                  </div>
+                  
+                  <div className="space-y-[8px]">
+                    <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                      • 1-5 files: 2-5 minutes
+                    </div>
+                    <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                      • 6-10 files: 5-10 minutes
+                    </div>
+                    <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                      • 11-20 files: 10-20 minutes
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        <header className="flex w-full h-[95px] items-center justify-between px-[25px] py-[21px] absolute top-0 left-0 bg-[#fefefe] border-b-2 border-[#f9f9f9]">
           <div className="inline-flex items-center gap-[19px] relative flex-[0_0_auto] mt-[-2.22px] mb-[-2.22px]">
             <img
               className="relative flex-[0_0_auto]"
@@ -16,7 +145,7 @@ export const MultipleLedes = (): JSX.Element => {
               src="/figmaAssets/morae-logo.svg"
             />
 
-            <div className="relative w-[52px] h-[52px] bg-[#d3e4f3] dark:bg-blue-800 rounded-[26px]">
+            <div className="relative w-[52px] h-[52px] bg-[#d3e4f3] rounded-[26px]">
               <img
                 className="absolute w-[49px] h-10 top-3 left-[3px]"
                 alt="Subtract"
@@ -25,7 +154,7 @@ export const MultipleLedes = (): JSX.Element => {
             </div>
 
             <div className="flex flex-col w-60 items-start gap-[3px] relative">
-              <div className="relative self-stretch mt-[-1.00px] font-sans font-bold text-black dark:text-white text-xl tracking-[0] leading-normal">
+              <div className="relative self-stretch mt-[-1.00px] font-sans font-bold text-black text-xl tracking-[0] leading-normal">
                 PDF → LEDES
               </div>
             </div>
@@ -36,102 +165,11 @@ export const MultipleLedes = (): JSX.Element => {
             className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
           >
             <AlertTriangleIcon className="w-7 h-7" />
-            <span className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm tracking-[0] leading-normal">
+            <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
               Support
             </span>
           </Button>
         </header>
-
-        {/* Main Content */}
-        <div className="flex flex-col items-center justify-center px-8 py-16 min-h-[calc(100vh-95px)]">
-          <div className="max-w-4xl w-full space-y-8">
-            {/* Back Button */}
-            <Link href="/home">
-              <Button variant="ghost" className="mb-4">
-                <ArrowLeftIcon className="w-4 h-4 mr-2" />
-                Back to Home
-              </Button>
-            </Link>
-
-            {/* Title */}
-            <div className="text-center space-y-4">
-              <h1 className="font-sans font-bold text-black dark:text-white text-3xl tracking-[0] leading-normal">
-                Convert Multiple PDFs to LEDES
-              </h1>
-              <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-lg tracking-[0] leading-relaxed">
-                Upload multiple PDF documents to batch convert them to LEDES format.
-              </p>
-            </div>
-
-            {/* Upload Area */}
-            <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
-              <CardContent className="flex flex-col items-center justify-center py-16 px-6">
-                <div className="flex items-center justify-center mb-4">
-                  <FilesIcon className="w-16 h-16 text-gray-400 dark:text-gray-500" />
-                </div>
-                <h3 className="font-sans font-semibold text-black dark:text-white text-xl mb-2">
-                  Upload multiple PDF files
-                </h3>
-                <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-base text-center mb-6">
-                  Drag and drop multiple PDF files here, or click to browse and select files
-                </p>
-                <Button className="font-sans font-medium text-white text-base bg-neutral-800 dark:bg-neutral-700 hover:bg-neutral-700 dark:hover:bg-neutral-600">
-                  Choose Files
-                </Button>
-                <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm mt-4">
-                  Supported format: PDF (max 50MB each, up to 20 files)
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Batch Processing Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                <CardHeader>
-                  <CardTitle className="font-sans font-semibold text-black dark:text-white text-lg">
-                    Batch Processing Benefits
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • Process up to 20 files simultaneously
-                  </p>
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • Automated file organization and naming
-                  </p>
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • Progress tracking for each file
-                  </p>
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • Consolidated download of all LEDES files
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                <CardHeader>
-                  <CardTitle className="font-sans font-semibold text-black dark:text-white text-lg">
-                    Processing Timeline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • 1-5 files: 2-5 minutes
-                  </p>
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • 6-10 files: 5-10 minutes
-                  </p>
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • 11-20 files: 10-20 minutes
-                  </p>
-                  <p className="font-sans font-normal text-[#53585a] dark:text-gray-400 text-sm">
-                    • Files processed in parallel for efficiency
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
