@@ -24,6 +24,8 @@ Fullstack JavaScript application migrated from Figma to Replit environment with 
 - **2025-01-23**: Home page built with One LEDES and Multiple LEDES options
 - **2025-01-23**: SingleLedes and MultipleLedes pages redesigned to match Figma pixel-perfect styling
 - **2025-01-23**: Applied precise dimensions, colors, and positioning following Figma design system
+- **2025-01-23**: Combined SingleLedes and MultipleLedes into unified Convert page with automatic file detection
+- **2025-01-23**: Implemented smart UI that adapts based on number of files uploaded (single vs multiple)
 
 ## User Preferences
 - Follow modern web application patterns

@@ -6,22 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const Home = (): JSX.Element => {
   const options = [
     {
-      id: "single",
-      title: "One LEDES",
-      description: "Convert a single PDF document to LEDES format",
+      id: "convert",
+      title: "PDF → LEDES Converter",
+      description: "Upload single or multiple PDF documents to convert to LEDES format",
       icon: FileTextIcon,
-      href: "/convert/single",
+      href: "/convert",
       color: "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800",
       iconColor: "text-blue-600 dark:text-blue-400"
-    },
-    {
-      id: "multiple",
-      title: "Multiple LEDES", 
-      description: "Convert multiple PDF documents to LEDES format in batch",
-      icon: FilesIcon,
-      href: "/convert/multiple",
-      color: "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800",
-      iconColor: "text-green-600 dark:text-green-400"
     }
   ];
 
