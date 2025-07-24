@@ -26,6 +26,9 @@ Fullstack JavaScript application migrated from Figma to Replit environment with 
 - **2025-01-23**: Applied precise dimensions, colors, and positioning following Figma design system
 - **2025-01-23**: Combined SingleLedes and MultipleLedes into unified Convert page with automatic file detection
 - **2025-01-23**: Implemented smart UI that adapts based on number of files uploaded (single vs multiple)
+- **2025-01-24**: Added conditional logic to display "Your Files" section after conversion
+- **2025-01-24**: Implemented search functionality for upload reference filtering
+- **2025-01-24**: Created processed files table with upload reference, date, invoices, and status columns
 
 ## User Preferences
 - Follow modern web application patterns

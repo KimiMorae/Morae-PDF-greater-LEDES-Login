@@ -7,7 +7,6 @@ import NotFound from "@/pages/not-found";
 
 import { Login } from "@/pages/Login";
 import { Home } from "@/pages/Home";
-import { Convert } from "@/pages/Convert";
 
 function Router() {
   return (
@@ -15,7 +14,6 @@ function Router() {
       {/* Add pages below */}
       <Route path="/" component={Login} />
       <Route path="/home" component={Home} />
-      <Route path="/convert" component={Convert} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
