@@ -7,8 +7,21 @@ import { Input } from "@/components/ui/input";
 
 export const Login = (): JSX.Element => {
   const [, setLocation] = useLocation();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+
+  // Debug environment variables
+  console.log("Environment variables:", {
+    email: import.meta.env.VITE_USER_EMAIL,
+    password: import.meta.env.VITE_USER_PASSWORD,
+    clientId: import.meta.env.VITE_CLIENT_ID,
+    clientSecret: import.meta.env.VITE_CLIENT_SECRET,
+  });
+
+  const [username, setUsername] = useState(
+    import.meta.env.VITE_USER_EMAIL || "email@email.com"
+  );
+  const [password, setPassword] = useState(
+    import.meta.env.VITE_USER_PASSWORD || "postgres"
+  );
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +32,11 @@ export const Login = (): JSX.Element => {
 
   const handleMicrosoftLogin = () => {
     // For now, just navigate to home page
-    // In a real app, you'd integrate with Microsoft OAuth
+    // In a real app, you'd integrate with Microsoft OAuth using:
+    console.log("Microsoft OAuth credentials:", {
+      clientId: import.meta.env.VITE_CLIENT_ID,
+      clientSecret: import.meta.env.VITE_CLIENT_SECRET,
+    });
     setLocation("/home");
   };
   // Data for links in the login form
@@ -49,7 +66,10 @@ export const Login = (): JSX.Element => {
                   Login
                 </div>
 
-                <form onSubmit={handleLogin} className="inline-flex flex-col items-start gap-2.5 relative flex-[0_0_auto]">
+                <form
+                  onSubmit={handleLogin}
+                  className="inline-flex flex-col items-start gap-2.5 relative flex-[0_0_auto]"
+                >
                   <div className="inline-flex flex-col items-start gap-[3px] relative flex-[0_0_auto]">
                     <label className="relative w-fit mt-[-1.00px] font-sans font-semibold text-black text-xs tracking-[0] leading-normal">
                       Username / email
@@ -60,7 +80,7 @@ export const Login = (): JSX.Element => {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
-                        placeholder="Enter your email or username..."
+                        placeholder="Enter your email"
                       />
                     </div>
                   </div>
@@ -76,7 +96,7 @@ export const Login = (): JSX.Element => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
-                        placeholder="Enter your password..."
+                        placeholder="Password pre-filled - click Login"
                       />
 
                       <div className="inline-flex items-center justify-center relative flex-[0_0_auto]">
@@ -99,7 +119,7 @@ export const Login = (): JSX.Element => {
                 </div>
 
                 <div className="flex items-center justify-end self-stretch w-full gap-2.5 relative flex-[0_0_auto]">
-                  <Button 
+                  <Button
                     onClick={handleLogin}
                     className="h-[43px] px-3.5 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base"
                   >

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { uploadFiles, type UploadedFile } from "@/lib/api";
 
 // Mock processed files data structure
 interface ProcessedFile {
@@ -10,10 +11,20 @@ interface ProcessedFile {
   uploadReference: string;
   dateUploaded: string;
   invoices: number;
-  status: 'Success' | 'Error';
+  status: "Success" | "Error";
 }
 
 export const Home = (): JSX.Element => {
+  // Console log environment variables when home page loads
+  console.log("=== HOME PAGE LOADED ===");
+  console.log("Authentication credentials verified:", {
+    email: import.meta.env.VITE_USER_EMAIL,
+    password: import.meta.env.VITE_USER_PASSWORD,
+    clientId: import.meta.env.VITE_CLIENT_ID,
+    clientSecret: import.meta.env.VITE_CLIENT_SECRET,
+  });
+  console.log("========================");
+
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isConverting, setIsConverting] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
@@ -32,7 +43,7 @@ export const Home = (): JSX.Element => {
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const files = Array.from(event.dataTransfer.files);
-    const pdfFiles = files.filter(file => file.type === "application/pdf");
+    const pdfFiles = files.filter((file) => file.type === "application/pdf");
     setSelectedFiles(pdfFiles);
   };
 
@@ -40,37 +51,48 @@ export const Home = (): JSX.Element => {
     event.preventDefault();
   };
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     if (selectedFiles.length === 0) return;
     setIsConverting(true);
-    
-    // Simulate conversion process
-    setTimeout(() => {
-      // Add processed files to the list
-      const newProcessedFiles = selectedFiles.map((file, index) => ({
-        id: Math.random().toString(36).substr(2, 9),
-        uploadReference: `#${Math.floor(Math.random() * 9000) + 1000}`,
-        dateUploaded: new Date().toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        }),
-        invoices: Math.floor(Math.random() * 300) + 50,
-        status: Math.random() > 0.2 ? 'Success' : 'Error' as 'Success' | 'Error'
-      }));
-      
-      setProcessedFiles(prev => [...newProcessedFiles, ...prev]);
+
+    try {
+      console.log("Starting file upload...");
+      const result = await uploadFiles(selectedFiles);
+
+      console.log("Upload response:", result);
+
+      // Convert API response to ProcessedFile format
+      const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
+        (file: UploadedFile) => ({
+          id: result.run_id,
+          uploadReference: `#${file.file_id}`,
+          dateUploaded: new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          invoices: Math.floor(Math.random() * 300) + 50, // This would come from actual processing
+          status: "Success" as const,
+        })
+      );
+
+      setProcessedFiles((prev) => [...newProcessedFiles, ...prev]);
       setSelectedFiles([]);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      // Handle error - could show a toast notification
+      alert("Upload failed. Please try again.");
+    } finally {
       setIsConverting(false);
-    }, 3000);
+    }
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(files => files.filter((_, i) => i !== index));
+    setSelectedFiles((files) => files.filter((_, i) => i !== index));
   };
 
   // Filter processed files based on search term
-  const filteredProcessedFiles = processedFiles.filter(file =>
+  const filteredProcessedFiles = processedFiles.filter((file) =>
     file.uploadReference.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -100,31 +122,38 @@ export const Home = (): JSX.Element => {
                 </div>
 
                 {/* File Upload Area */}
-                <div 
+                <div
                   className="flex flex-col items-center justify-center w-full h-[280px] bg-white rounded-[12px] border-2 border-dashed border-[#d7dbdd] relative cursor-pointer hover:border-[#2563eb] transition-colors"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  onClick={() => document.getElementById('file-input')?.click()}
+                  onClick={() => document.getElementById("file-input")?.click()}
                 >
                   <input
                     id="file-input"
                     type="file"
                     multiple
-                    accept=".pdf"
+                    accept=".pdf,.zip"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
 
                   <div className="flex flex-col items-center gap-[15px]">
                     <div className="w-16 h-16 bg-[#d3e4f3] rounded-[8px] flex items-center justify-center">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                        <polyline points="14,2 14,8 20,8"/>
+                      <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#2563eb"
+                        strokeWidth="2"
+                      >
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                        <polyline points="14,2 14,8 20,8" />
                         {isMultiple && (
                           <>
-                            <path d="M16 13H8"/>
-                            <path d="M16 17H8"/>
-                            <path d="M10 9H8"/>
+                            <path d="M16 13H8" />
+                            <path d="M16 17H8" />
+                            <path d="M10 9H8" />
                           </>
                         )}
                       </svg>
@@ -132,17 +161,18 @@ export const Home = (): JSX.Element => {
 
                     <div className="text-center">
                       <div className="font-sans font-semibold text-black text-lg tracking-[0] leading-normal mb-1">
-                        {selectedFiles.length > 0 
-                          ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected`
-                          : "Drop your PDF files here"
-                        }
+                        {selectedFiles.length > 0
+                          ? `${selectedFiles.length} file${
+                              selectedFiles.length > 1 ? "s" : ""
+                            } selected`
+                          : "Drop your PDF or ZIP files here"}
                       </div>
                       <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
                         or click to browse
                       </div>
                     </div>
 
-                    <Button 
+                    <Button
                       type="button"
                       className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base"
                     >
@@ -150,7 +180,8 @@ export const Home = (): JSX.Element => {
                     </Button>
 
                     <div className="font-sans font-normal text-[#53585a] text-xs tracking-[0] leading-normal text-center">
-                      Supported format: PDF (max 50MB each{isMultiple ? ', up to 20 files' : ''})
+                      Supported format: PDF (max 50MB each
+                      {isMultiple ? ", up to 20 files" : ""})
                     </div>
                   </div>
                 </div>
@@ -164,17 +195,30 @@ export const Home = (): JSX.Element => {
 
                     <div className="flex flex-col w-full max-h-[200px] overflow-y-auto gap-2 p-4 relative bg-white rounded border border-solid border-[#d7dbdd]">
                       {selectedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded border"
+                        >
                           <div className="flex items-center gap-2">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-                              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                              <polyline points="14,2 14,8 20,8"/>
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#2563eb"
+                              strokeWidth="2"
+                            >
+                              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                              <polyline points="14,2 14,8 20,8" />
                             </svg>
                             <span className="font-sans font-normal text-black text-sm truncate max-w-[400px]">
                               {file.name}
                             </span>
                             <span className="font-sans font-normal text-[#53585a] text-xs">
-                              ({Math.round(file.size / 1024 / 1024 * 100) / 100} MB)
+                              (
+                              {Math.round((file.size / 1024 / 1024) * 100) /
+                                100}{" "}
+                              MB)
                             </span>
                           </div>
                           <button
@@ -194,7 +238,7 @@ export const Home = (): JSX.Element => {
 
                 {/* Convert Button */}
                 <div className="flex items-center justify-end self-stretch w-full gap-2.5 relative flex-[0_0_auto]">
-                  <Button 
+                  <Button
                     onClick={handleConvert}
                     disabled={selectedFiles.length === 0 || isConverting}
                     className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base disabled:opacity-50"
@@ -267,7 +311,8 @@ export const Home = (): JSX.Element => {
                         • The conversion process typically takes 1-3 minutes
                       </div>
                       <div className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
-                        • You'll receive a downloadable LEDES file upon completion
+                        • You'll receive a downloadable LEDES file upon
+                        completion
                       </div>
                     </div>
                   </CardContent>
@@ -324,10 +369,10 @@ export const Home = (): JSX.Element => {
                     {/* Table Rows */}
                     <div className="max-h-80 overflow-y-auto">
                       {filteredProcessedFiles.map((file, index) => (
-                        <div 
+                        <div
                           key={file.id}
                           className={`grid grid-cols-4 gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                            index === 0 ? 'bg-blue-50' : ''
+                            index === 0 ? "bg-blue-50" : ""
                           }`}
                         >
                           <div className="font-sans font-medium text-blue-600 text-sm">
@@ -339,14 +384,18 @@ export const Home = (): JSX.Element => {
                           <div className="font-sans text-gray-600 text-sm">
                             {file.invoices}
                           </div>
-                          <div className={`font-sans text-sm ${
-                            file.status === 'Success' ? 'text-green-600' : 'text-red-600'
-                          }`}>
+                          <div
+                            className={`font-sans text-sm ${
+                              file.status === "Success"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
                             {file.status}
                           </div>
                         </div>
                       ))}
-                      
+
                       {filteredProcessedFiles.length === 0 && searchTerm && (
                         <div className="p-8 text-center text-gray-500">
                           <div className="font-sans text-sm">
