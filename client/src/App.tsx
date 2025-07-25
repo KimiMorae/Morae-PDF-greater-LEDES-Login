@@ -7,13 +7,18 @@ import NotFound from "@/pages/not-found";
 
 import { Login } from "@/pages/Login";
 import { Home } from "@/pages/Home";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
   return (
     <Switch>
       {/* Add pages below */}
       <Route path="/" component={Login} />
-      <Route path="/home" component={Home} />
+      <Route path="/home">
+        <ProtectedRoute>
+          <Home />
+        </ProtectedRoute>
+      </Route>
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

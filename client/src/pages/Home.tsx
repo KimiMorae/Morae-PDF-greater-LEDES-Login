@@ -1,9 +1,12 @@
-import { AlertTriangleIcon, SearchIcon, FilterIcon } from "lucide-react";
+import { AlertTriangleIcon, SearchIcon, FilterIcon, LogOutIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { uploadFiles, type UploadedFile } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useLocation } from "wouter";
 
 // Mock processed files data structure
 interface ProcessedFile {
@@ -15,20 +18,21 @@ interface ProcessedFile {
 }
 
 export const Home = (): JSX.Element => {
-  // Console log environment variables when home page loads
-  console.log("=== HOME PAGE LOADED ===");
-  console.log("Authentication credentials verified:", {
-    email: import.meta.env.VITE_USER_EMAIL,
-    password: import.meta.env.VITE_USER_PASSWORD,
-    clientId: import.meta.env.VITE_CLIENT_ID,
-    clientSecret: import.meta.env.VITE_CLIENT_SECRET,
-  });
+  const { logout } = useAuth();
+  const { profile } = useUserProfile();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    logout();
+    setLocation("/");
+  };
   console.log("========================");
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isConverting, setIsConverting] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const isMultiple = selectedFiles.length > 1;
   const pageTitle = isMultiple ? "Multiple LEDES" : "One LEDES";
@@ -38,6 +42,7 @@ export const Home = (): JSX.Element => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     setSelectedFiles(files);
+    setUploadError(null); // Clear any previous errors
   };
 
   const handleDrop = (event: React.DragEvent) => {
@@ -45,6 +50,7 @@ export const Home = (): JSX.Element => {
     const files = Array.from(event.dataTransfer.files);
     const pdfFiles = files.filter((file) => file.type === "application/pdf");
     setSelectedFiles(pdfFiles);
+    setUploadError(null); // Clear any previous errors
   };
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -53,12 +59,17 @@ export const Home = (): JSX.Element => {
 
   const handleConvert = async () => {
     if (selectedFiles.length === 0) return;
+
     setIsConverting(true);
+    setUploadError(null);
 
     try {
       console.log("Starting file upload...");
-      const result = await uploadFiles(selectedFiles);
+      console.log("Profile available:", !!profile);
+      console.log("Using client_id:", profile?.client_id);
+      console.log("Files to upload:", selectedFiles.length);
 
+      const result = await uploadFiles(selectedFiles);
       console.log("Upload response:", result);
 
       // Convert API response to ProcessedFile format
@@ -78,10 +89,17 @@ export const Home = (): JSX.Element => {
 
       setProcessedFiles((prev) => [...newProcessedFiles, ...prev]);
       setSelectedFiles([]);
+      setUploadError(null);
     } catch (error) {
       console.error("Upload failed:", error);
-      // Handle error - could show a toast notification
-      alert("Upload failed. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Upload failed. Please try again.";
+      setUploadError(errorMessage);
+
+      // If it's an authentication error, the refresh logic should have handled redirect
+      // Otherwise, show the error to the user
+      if (!errorMessage.includes('Authentication tokens missing')) {
+        alert(errorMessage);
+      }
     } finally {
       setIsConverting(false);
     }
@@ -233,6 +251,16 @@ export const Home = (): JSX.Element => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Error Display */}
+                {uploadError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertTriangleIcon className="w-4 h-4 text-red-500" />
+                    <span className="font-sans font-normal text-red-700 text-sm">
+                      {uploadError}
+                    </span>
                   </div>
                 )}
 
@@ -434,15 +462,28 @@ export const Home = (): JSX.Element => {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
-          >
-            <AlertTriangleIcon className="w-7 h-7" />
-            <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
-              Support
-            </span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
+            >
+              <AlertTriangleIcon className="w-7 h-7" />
+              <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                Support
+              </span>
+            </Button>
+
+            <Button
+              onClick={handleLogout}
+              variant="ghost"
+              className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px] hover:bg-red-50"
+            >
+              <LogOutIcon className="w-5 h-5 text-red-600" />
+              <span className="font-sans font-normal text-red-600 text-sm tracking-[0] leading-normal">
+                Logout
+              </span>
+            </Button>
+          </div>
         </header>
       </div>
     </div>

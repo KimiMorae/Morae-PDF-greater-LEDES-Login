@@ -4,40 +4,44 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { login } from "@/lib/api";
 
 export const Login = (): JSX.Element => {
   const [, setLocation] = useLocation();
 
-  // Debug environment variables
-  console.log("Environment variables:", {
-    email: import.meta.env.VITE_USER_EMAIL,
-    password: import.meta.env.VITE_USER_PASSWORD,
-    clientId: import.meta.env.VITE_CLIENT_ID,
-    clientSecret: import.meta.env.VITE_CLIENT_SECRET,
-  });
-
-  const [username, setUsername] = useState(
-    import.meta.env.VITE_USER_EMAIL || "email@email.com"
+  const [email, setEmail] = useState(
+    import.meta.env.VITE_USER_EMAIL || ""
   );
   const [password, setPassword] = useState(
-    import.meta.env.VITE_USER_PASSWORD || "postgres"
+    import.meta.env.VITE_USER_PASSWORD || ""
   );
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For now, just navigate to home page
-    // In a real app, you'd validate credentials here
-    setLocation("/home");
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { tokens, profile } = await login({ email, password });
+
+      console.log("Login successful:");
+      console.log("Tokens:", tokens);
+      console.log("User profile:", profile);
+      console.log("Client ID stored:", profile.client_id);
+
+      setLocation("/home");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMicrosoftLogin = () => {
-    // For now, just navigate to home page
-    // In a real app, you'd integrate with Microsoft OAuth using:
-    console.log("Microsoft OAuth credentials:", {
-      clientId: import.meta.env.VITE_CLIENT_ID,
-      clientSecret: import.meta.env.VITE_CLIENT_SECRET,
-    });
-    setLocation("/home");
+    // Microsoft OAuth integration would go here
+    console.log("Microsoft OAuth not implemented yet");
   };
   // Data for links in the login form
   const loginLinks = [
@@ -77,10 +81,12 @@ export const Login = (): JSX.Element => {
 
                     <div className="flex w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
                       <Input
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
                         placeholder="Enter your email"
+                        required
                       />
                     </div>
                   </div>
@@ -96,7 +102,8 @@ export const Login = (): JSX.Element => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
-                        placeholder="Password pre-filled - click Login"
+                        placeholder="Enter your password"
+                        required
                       />
 
                       <div className="inline-flex items-center justify-center relative flex-[0_0_auto]">
@@ -105,6 +112,13 @@ export const Login = (): JSX.Element => {
                     </div>
                   </div>
                 </form>
+
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <AlertTriangleIcon className="w-4 h-4 text-red-500" />
+                    <span className="text-sm text-red-700">{error}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between px-[5px] py-2.5 relative self-stretch w-full flex-[0_0_auto]">
                   {loginLinks.map((link, index) => (
@@ -121,9 +135,10 @@ export const Login = (): JSX.Element => {
                 <div className="flex items-center justify-end self-stretch w-full gap-2.5 relative flex-[0_0_auto]">
                   <Button
                     onClick={handleLogin}
-                    className="h-[43px] px-3.5 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base"
+                    disabled={isLoading}
+                    className="h-[43px] px-3.5 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base disabled:opacity-50"
                   >
-                    Login
+                    {isLoading ? "Logging in..." : "Login"}
                   </Button>
                 </div>
               </CardContent>
