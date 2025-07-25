@@ -3,18 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { uploadFiles, type UploadedFile } from "@/lib/api";
+import { uploadFiles, downloadOriginalFile, downloadProcessedFilesZip, type UploadedFile } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientInfo } from "@/hooks/useUserProfile";
 import { useLocation } from "wouter";
 
-// Mock processed files data structure
+// Processed files data structure
 interface ProcessedFile {
   id: string;
   uploadReference: string;
   dateUploaded: string;
   invoices: number;
   status: "Success" | "Error";
+  fileIds: number[];
+  ledeResults?: any[];
 }
 
 export const Home = (): JSX.Element => {
@@ -33,6 +35,7 @@ export const Home = (): JSX.Element => {
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [processingStep, setProcessingStep] = useState<string>("");
 
   const isMultiple = selectedFiles.length > 1;
   const pageTitle = isMultiple ? "Multiple LEDES" : "One LEDES";
@@ -62,15 +65,20 @@ export const Home = (): JSX.Element => {
 
     setIsConverting(true);
     setUploadError(null);
+    setProcessingStep("Uploading files...");
 
     try {
-      console.log("Starting file upload...");
+      console.log("Starting file upload and processing...");
       console.log("Client ID available:", !!clientId);
       console.log("Using client_id:", clientId);
       console.log("Files to upload:", selectedFiles.length);
 
-      const result = await uploadFiles(selectedFiles);
-      console.log("Upload response:", result);
+      const result = await uploadFiles(selectedFiles, "iag", "ledes", 0, setProcessingStep);
+      console.log("Complete processing response:", result);
+
+      // Extract file IDs and LEDE results from the complete processing response
+      const fileIds = result.files_uploaded?.map((file: UploadedFile) => file.file_id) || [];
+      const ledeResults = result.processing_results?.generate_lede?.results || [];
 
       // Convert API response to ProcessedFile format
       const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
@@ -82,18 +90,21 @@ export const Home = (): JSX.Element => {
             month: "long",
             day: "numeric",
           }),
-          invoices: Math.floor(Math.random() * 300) + 50, // This would come from actual processing
           status: "Success" as const,
+          fileIds: [file.file_id],
+          ledeResults: ledeResults.filter((lede: any) => lede.file_id === file.file_id),
         })
       );
 
       setProcessedFiles((prev) => [...newProcessedFiles, ...prev]);
       setSelectedFiles([]);
       setUploadError(null);
+      setProcessingStep("");
     } catch (error) {
-      console.error("Upload failed:", error);
-      const errorMessage = error instanceof Error ? error.message : "Upload failed. Please try again.";
+      console.error("Upload and processing failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Upload and processing failed. Please try again.";
       setUploadError(errorMessage);
+      setProcessingStep("");
 
       // If it's an authentication error, the refresh logic should have handled redirect
       // Otherwise, show the error to the user
@@ -107,6 +118,33 @@ export const Home = (): JSX.Element => {
 
   const removeFile = (index: number) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index));
+  };
+
+  const handleDownloadOriginal = async (fileIds: number[]) => {
+    try {
+      if (fileIds.length === 1) {
+        await downloadOriginalFile(fileIds[0]);
+      } else {
+        // Download multiple original files one by one
+        for (const fileId of fileIds) {
+          await downloadOriginalFile(fileId);
+          // Add small delay between downloads
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again.');
+    }
+  };
+
+  const handleDownloadProcessed = async (fileIds: number[]) => {
+    try {
+      await downloadProcessedFilesZip(fileIds);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again.');
+    }
   };
 
   // Filter processed files based on search term
@@ -271,7 +309,7 @@ export const Home = (): JSX.Element => {
                     disabled={selectedFiles.length === 0 || isConverting}
                     className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base disabled:opacity-50"
                   >
-                    {isConverting ? "Converting..." : buttonText}
+                    {isConverting ? (processingStep || "Processing...") : buttonText}
                   </Button>
                 </div>
               </CardContent>
@@ -379,7 +417,7 @@ export const Home = (): JSX.Element => {
                 <Card className="bg-white rounded-lg border border-gray-200">
                   <CardContent className="p-0">
                     {/* Table Header */}
-                    <div className="grid grid-cols-4 gap-4 p-4 border-b border-gray-200 bg-gray-50">
+                    <div className="grid grid-cols-5 gap-4 p-4 border-b border-gray-200 bg-gray-50">
                       <div className="font-sans font-semibold text-gray-700 text-sm">
                         Upload reference
                       </div>
@@ -387,10 +425,10 @@ export const Home = (): JSX.Element => {
                         Date uploaded
                       </div>
                       <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Invoices
+                        Status
                       </div>
                       <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Status
+                        Downloads
                       </div>
                     </div>
 
@@ -399,7 +437,7 @@ export const Home = (): JSX.Element => {
                       {filteredProcessedFiles.map((file, index) => (
                         <div
                           key={file.id}
-                          className={`grid grid-cols-4 gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                          className={`grid grid-cols-5 gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 ${
                             index === 0 ? "bg-blue-50" : ""
                           }`}
                         >
@@ -409,9 +447,6 @@ export const Home = (): JSX.Element => {
                           <div className="font-sans text-gray-600 text-sm">
                             {file.dateUploaded}
                           </div>
-                          <div className="font-sans text-gray-600 text-sm">
-                            {file.invoices}
-                          </div>
                           <div
                             className={`font-sans text-sm ${
                               file.status === "Success"
@@ -420,6 +455,28 @@ export const Home = (): JSX.Element => {
                             }`}
                           >
                             {file.status}
+                          </div>
+                          <div className="flex gap-2">
+                            {file.status === "Success" && file.fileIds && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownloadOriginal(file.fileIds)}
+                                  className="h-8 px-3 text-xs"
+                                >
+                                  Single File
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownloadProcessed(file.fileIds)}
+                                  className="h-8 px-3 text-xs"
+                                >
+                                  {file.fileIds.length === 1 ? 'LEDEs ZIP' : 'All ZIP'}
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
