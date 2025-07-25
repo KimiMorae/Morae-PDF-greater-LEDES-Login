@@ -3,8 +3,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 // Debug environment variables
 console.log("Environment variables debug:", {
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-  VITE_CLIENT_ID: import.meta.env.VITE_CLIENT_ID,
-  VITE_CLIENT_SECRET: import.meta.env.VITE_CLIENT_SECRET,
   all_env: import.meta.env
 });
 
@@ -15,15 +13,13 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access: string;
-  refresh: string;
-}
-
-export interface UserProfile {
-  id: string;
-  email: string;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
   client_id: string;
-  // Add other profile fields as needed
+  client_secret: string;
 }
 
 export interface RefreshTokenResponse {
@@ -48,10 +44,10 @@ export interface UploadResponse {
 }
 
 // Authentication functions
-export async function login(credentials: LoginRequest): Promise<{ tokens: LoginResponse; profile: UserProfile }> {
+export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   try {
-    // Step 1: Get JWT tokens
-    const response = await fetch(`${API_BASE_URL}/auth/web/token/`, {
+    // Use the new simple login endpoint
+    const response = await fetch(`${API_BASE_URL}/auth/simple-login/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -64,33 +60,22 @@ export async function login(credentials: LoginRequest): Promise<{ tokens: LoginR
       throw new Error(errorData.detail || `Login failed: ${response.status}`);
     }
 
-    const tokens = await response.json();
+    const loginData = await response.json();
 
-    // Store JWT tokens
-    localStorage.setItem("access_token", tokens.access);
-    localStorage.setItem("refresh_token", tokens.refresh);
+    // Store all authentication data from the login response
+    localStorage.setItem("access_token", loginData.access_token);
+    localStorage.setItem("refresh_token", loginData.refresh_token);
+    localStorage.setItem("client_id", loginData.client_id);
+    localStorage.setItem("client_secret", loginData.client_secret);
 
-    // Step 2: Get user profile with client_id
-    const profileResponse = await fetch(`${API_BASE_URL}/auth/profile/jwt/`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${tokens.access}`,
-        "Content-Type": "application/json",
-      },
+    console.log("Login successful:", {
+      token_type: loginData.token_type,
+      expires_in: loginData.expires_in,
+      scope: loginData.scope,
+      client_id: loginData.client_id
     });
 
-    if (!profileResponse.ok) {
-      const errorData = await profileResponse.json().catch(() => ({}));
-      throw new Error(errorData.detail || "Failed to fetch user profile");
-    }
-
-    const profile = await profileResponse.json();
-
-    // Store client_id and user info
-    localStorage.setItem("client_id", profile.client_id);
-    localStorage.setItem("user_profile", JSON.stringify(profile));
-
-    return { tokens, profile };
+    return loginData;
   } catch (error) {
     console.error("Login error:", error);
     throw error;
@@ -113,23 +98,15 @@ export function getClientId(): string | null {
   return localStorage.getItem("client_id");
 }
 
-export function getStoredUserProfile(): UserProfile | null {
-  const profileStr = localStorage.getItem("user_profile");
-  if (!profileStr) return null;
-
-  try {
-    return JSON.parse(profileStr);
-  } catch (error) {
-    console.error("Failed to parse stored user profile:", error);
-    return null;
-  }
+export function getClientSecret(): string | null {
+  return localStorage.getItem("client_secret");
 }
 
 export function removeToken(): void {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("client_id");
-  localStorage.removeItem("user_profile");
+  localStorage.removeItem("client_secret");
 }
 
 // Utility function to check if token is likely expired (basic check)
@@ -144,41 +121,7 @@ export function isTokenLikelyExpired(token: string): boolean {
   }
 }
 
-export async function getUserProfile(): Promise<UserProfile> {
-  // First try to get stored profile
-  const storedProfile = getStoredUserProfile();
-  if (storedProfile) {
-    return storedProfile;
-  }
 
-  // If no stored profile, fetch from API
-  const token = getToken();
-
-  if (!token) {
-    throw new Error("No authentication token found");
-  }
-
-  const response = await fetch(`${API_BASE_URL}/auth/profile/jwt/`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to get user profile: ${response.status}`);
-  }
-
-  const profile = await response.json();
-
-  // Store the fetched profile
-  localStorage.setItem("client_id", profile.client_id);
-  localStorage.setItem("user_profile", JSON.stringify(profile));
-
-  return profile;
-}
 
 // Token refresh function
 export async function refreshTokenAndRetry(): Promise<void> {
@@ -236,16 +179,18 @@ export async function uploadFiles( files: File[], projectId: string = "iag", ser
     // Get tokens from localStorage
     const accessToken = getToken();
     const clientId = getClientId();
+    const clientSecret = getClientSecret();
 
     console.log('Upload attempt:', {
       retryCount,
       hasAccessToken: !!accessToken,
       hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
       accessTokenLength: accessToken?.length,
       clientId: clientId
     });
 
-    if (!accessToken || !clientId) {
+    if (!accessToken || !clientId || !clientSecret) {
       throw new Error('Authentication tokens missing. Please login again.');
     }
 
@@ -258,13 +203,13 @@ export async function uploadFiles( files: File[], projectId: string = "iag", ser
     const headers = {
       'Authorization': `Bearer ${accessToken}`,
       'X-Client-ID': clientId,
-      'X-Client-Secret': import.meta.env.VITE_CLIENT_SECRET,
+      'X-Client-Secret': clientSecret,
     };
 
     console.log('Making upload request with headers:', {
       'Authorization': `Bearer ${accessToken.substring(0, 20)}...`,
       'X-Client-ID': clientId,
-      'X-Client-Secret': import.meta.env.VITE_CLIENT_SECRET ? 'present' : 'missing'
+      'X-Client-Secret': clientSecret ? 'present' : 'missing'
     });
 
     const response = await fetch(`${API_BASE_URL}/core/upload/`, {

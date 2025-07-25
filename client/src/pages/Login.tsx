@@ -24,12 +24,15 @@ export const Login = (): JSX.Element => {
     setError(null);
 
     try {
-      const { tokens, profile } = await login({ email, password });
+      const loginResponse = await login({ email, password });
 
       console.log("Login successful:");
-      console.log("Tokens:", tokens);
-      console.log("User profile:", profile);
-      console.log("Client ID stored:", profile.client_id);
+      console.log("Access token:", loginResponse.access_token.substring(0, 20) + "...");
+      console.log("Token type:", loginResponse.token_type);
+      console.log("Expires in:", loginResponse.expires_in);
+      console.log("Scope:", loginResponse.scope);
+      console.log("Client ID:", loginResponse.client_id);
+      console.log("Client Secret stored:", !!loginResponse.client_secret);
 
       setLocation("/home");
     } catch (err) {

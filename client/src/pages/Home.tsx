@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { uploadFiles, type UploadedFile } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useClientInfo } from "@/hooks/useUserProfile";
 import { useLocation } from "wouter";
 
 // Mock processed files data structure
@@ -19,7 +19,7 @@ interface ProcessedFile {
 
 export const Home = (): JSX.Element => {
   const { logout } = useAuth();
-  const { profile } = useUserProfile();
+  const { clientId } = useClientInfo();
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -65,8 +65,8 @@ export const Home = (): JSX.Element => {
 
     try {
       console.log("Starting file upload...");
-      console.log("Profile available:", !!profile);
-      console.log("Using client_id:", profile?.client_id);
+      console.log("Client ID available:", !!clientId);
+      console.log("Using client_id:", clientId);
       console.log("Files to upload:", selectedFiles.length);
 
       const result = await uploadFiles(selectedFiles);
