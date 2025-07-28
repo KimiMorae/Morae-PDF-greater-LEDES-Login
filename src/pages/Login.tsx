@@ -1,9 +1,10 @@
-import { AlertTriangleIcon, EyeOffIcon } from "lucide-react";
+import { EyeOffIcon, AlertTriangleIcon } from "lucide-react";
 import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Header } from "@/components/Header";
 import { login } from "@/lib/api";
 
 export const Login = (): JSX.Element => {
@@ -53,40 +54,7 @@ export const Login = (): JSX.Element => {
 
   return (
     <div className="bg-white flex flex-col min-h-screen w-full">
-      {/* Header */}
-      <header className="flex w-full h-[95px] items-center justify-between px-4 sm:px-[25px] py-[21px] bg-[#fefefe] border-b-2 border-[#f9f9f9] flex-shrink-0">
-        <div className="inline-flex items-center gap-3 sm:gap-[19px] relative flex-[0_0_auto]">
-          <img
-            className="relative flex-[0_0_auto] h-8 sm:h-auto"
-            alt="Morae logo"
-            src="/figmaAssets/morae-logo.svg"
-          />
-
-          <div className="relative w-10 h-10 sm:w-[52px] sm:h-[52px] bg-[#d3e4f3] rounded-full">
-            <img
-              className="absolute w-8 h-6 sm:w-[49px] sm:h-10 top-2 left-1 sm:top-3 sm:left-[3px]"
-              alt="Subtract"
-              src="/figmaAssets/subtract.svg"
-            />
-          </div>
-
-          <div className="flex flex-col items-start gap-[3px] relative">
-            <div className="relative font-sans font-bold text-black text-lg sm:text-xl tracking-[0] leading-normal">
-              PDF → LEDES
-            </div>
-          </div>
-        </div>
-
-        <Button
-          variant="ghost"
-          className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
-        >
-          <AlertTriangleIcon className="w-5 h-5 sm:w-7 sm:h-7" />
-          <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal hidden sm:inline">
-            Support
-          </span>
-        </Button>
-      </header>
+      <Header showAuthButtons={false} />
 
       {/* Main Content */}
       <div className="flex-1 w-full bg-[url(/figmaAssets/background-image.png)] bg-cover bg-center relative flex flex-col">
@@ -155,9 +123,9 @@ export const Login = (): JSX.Element => {
                 </form>
 
                 {error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <AlertTriangleIcon className="w-4 h-4 text-red-500" />
-                    <span className="text-sm text-red-700">{error}</span>
+                  <div className="flex items-center gap-2 p-3 bg-gray-100 border border-gray-300 rounded-md">
+                    <AlertTriangleIcon className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm text-gray-700">{error}</span>
                   </div>
                 )}
 
