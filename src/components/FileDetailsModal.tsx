@@ -1,4 +1,3 @@
-import { Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ProcessedFile {
@@ -25,16 +24,15 @@ export const FileDetailsModal = ({
 }: FileDetailsModalProps) => {
   if (!file) return null;
 
-  // Mock LEDES file data - in real implementation, this would come from the API
   const ledesFiles = file.ledeResults?.map((result: any, index: number) => ({
-    name: `LEDES_${file.invoiceName}_${index + 1}.xlsx`,
+    name: `${file.invoiceName}_LEDES`,
     dateCreated: file.dateUploaded,
-    pages: Math.floor(Math.random() * 10) + 1, // Mock page count
+    status: file.status,
   })) || [
     {
       name: `LEDES_${file.invoiceName}.xlsx`,
       dateCreated: file.dateUploaded,
-      pages: Math.floor(Math.random() * 10) + 1,
+      status: file.status,
     },
   ];
 
@@ -58,7 +56,7 @@ export const FileDetailsModal = ({
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              className="text-gray-400 hover:text-gray-600 text-xl"
             >
               ×
             </button>
@@ -77,7 +75,7 @@ export const FileDetailsModal = ({
                 Date Created
               </div>
               <div className="w-20 font-bold text-gray-700 text-sm text-center">
-                Pages
+                Status
               </div>
             </div>
 
@@ -96,7 +94,7 @@ export const FileDetailsModal = ({
                   {ledesFile.dateCreated}
                 </div>
                 <div className="w-20 font-normal text-sm text-gray-600 text-center">
-                  {ledesFile.pages}
+                  {ledesFile.status}
                 </div>
               </div>
             ))}
@@ -109,7 +107,10 @@ export const FileDetailsModal = ({
             Close
           </Button>
           <Button
-            onClick={() => onDownload(file.fileIds)}
+            onClick={() => {
+              onDownload(file.fileIds);
+              onClose();
+            }}
             className="px-4 py-2 bg-neutral-800 text-white hover:bg-neutral-700"
           >
             <img

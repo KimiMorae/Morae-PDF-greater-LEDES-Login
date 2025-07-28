@@ -1,8 +1,7 @@
-import { Home, LogOut, AlertTriangle, Menu, X } from "lucide-react";
+import { Home, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useState } from "react";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -27,7 +26,7 @@ export const Sidebar = ({
 
   return (
     <>
-      {/* Desktop Sidebar - Always visible on lg+ screens */}
+      {/* Desktop Sidebar */}
       <div className="hidden lg:flex fixed left-0 top-[95px] h-[calc(100vh-95px)] w-[15%] bg-white border-r-2 border-[#f9f9f9] flex-col z-20">
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6">
@@ -45,7 +44,7 @@ export const Sidebar = ({
           </Button>
         </nav>
 
-        {/* Bottom Actions */}
+        {/* User Profile */}
         <div className="p-4 border-t border-gray-100 space-y-2">
           <div className="flex items-center gap-3 h-10 px-4 text-gray-700">
             <img
@@ -103,7 +102,7 @@ export const Sidebar = ({
               </Button>
             </nav>
 
-            {/* Bottom Actions */}
+            {/* User Profile Mobile */}
             <div className="p-4 border-t border-gray-100 space-y-2">
               <div className="flex items-center gap-3 h-10 px-4 text-gray-700">
                 <img

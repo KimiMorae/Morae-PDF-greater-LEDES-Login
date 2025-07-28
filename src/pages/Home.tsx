@@ -1,7 +1,6 @@
 import {
   AlertTriangleIcon,
   SearchIcon,
-  FilterIcon,
   MoreHorizontal,
   Eye,
   Download,
@@ -19,7 +18,7 @@ import {
   downloadProcessedFilesZip,
   type UploadedFile,
 } from "@/lib/api";
-import { useClientInfo } from "@/hooks/useUserProfile";
+import { toast } from "@/hooks/use-toast";
 
 // Processed files data structure
 interface ProcessedFile {
@@ -34,9 +33,6 @@ interface ProcessedFile {
 }
 
 export const Home = (): JSX.Element => {
-  const { clientId } = useClientInfo();
-  console.log("========================");
-
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isConverting, setIsConverting] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
@@ -99,11 +95,6 @@ export const Home = (): JSX.Element => {
     setProcessingStep("Uploading files...");
 
     try {
-      console.log("Starting file upload and processing...");
-      console.log("Client ID available:", !!clientId);
-      console.log("Using client_id:", clientId);
-      console.log("Files to upload:", selectedFiles.length);
-
       const result = await uploadFiles(
         selectedFiles,
         "iag",
@@ -111,11 +102,7 @@ export const Home = (): JSX.Element => {
         0,
         setProcessingStep
       );
-      console.log("Complete processing response:", result);
 
-      // Extract file IDs and LEDE results from the complete processing response
-      const fileIds =
-        result.files_uploaded?.map((file: UploadedFile) => file.file_id) || [];
       const ledeResults =
         result.processing_results?.generate_lede?.results || [];
 
@@ -155,7 +142,6 @@ export const Home = (): JSX.Element => {
       setUploadError(null);
       setProcessingStep("");
     } catch (error) {
-      console.error("Upload and processing failed:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -163,10 +149,12 @@ export const Home = (): JSX.Element => {
       setUploadError(errorMessage);
       setProcessingStep("");
 
-      // If it's an authentication error, the refresh logic should have handled redirect
-      // Otherwise, show the error to the user
       if (!errorMessage.includes("Authentication tokens missing")) {
-        alert(errorMessage);
+        toast({
+          title: "Upload Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
     } finally {
       setIsConverting(false);
@@ -191,7 +179,6 @@ export const Home = (): JSX.Element => {
 
   // Extract invoice name from LEDE file path
   const extractInvoiceName = (ledeFilePath: string): string => {
-    // Extract filename from path: "/media/output/.../lede_Invoice_AU01-0041174R.xlsx"
     const filename = ledeFilePath.split("/").pop() || "";
     // Remove "lede_" prefix and file extension
     const invoiceName = filename
@@ -200,30 +187,15 @@ export const Home = (): JSX.Element => {
     return invoiceName || "Unknown Invoice";
   };
 
-  const handleDownloadOriginal = async (fileIds: number[]) => {
-    try {
-      if (fileIds.length === 1) {
-        await downloadOriginalFile(fileIds[0]);
-      } else {
-        // Download multiple original files one by one
-        for (const fileId of fileIds) {
-          await downloadOriginalFile(fileId);
-          // Add small delay between downloads
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      }
-    } catch (error) {
-      console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
-    }
-  };
-
   const handleDownloadProcessed = async (fileIds: number[]) => {
     try {
       await downloadProcessedFilesZip(fileIds);
     } catch (error) {
-      console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
+      toast({
+        title: "Download Failed",
+        description: "Failed to download processed files. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -239,7 +211,7 @@ export const Home = (): JSX.Element => {
     const rect = event.currentTarget.getBoundingClientRect();
     setDropdownPosition({
       top: rect.bottom + 4,
-      left: rect.right - 160, // 160px is dropdown width (w-40)
+      left: rect.right - 160,
     });
     setActiveDropdown(activeDropdown === fileId ? null : fileId);
   };
@@ -276,7 +248,7 @@ export const Home = (): JSX.Element => {
               Convert your PDF documents to compliant LEDES files
             </div>
 
-            {/* Upload Card - 20% width */}
+            {/* Upload Card */}
             <div className="w-80 mb-8">
               <Card className="flex flex-col items-start gap-6 p-6 w-full bg-gray-50 rounded-[17px_23px_23px_23px] border-2 border-solid border-gray-300 shadow-[0px_2px_42px_#00000026]">
                 <CardContent className="p-0 w-full">
@@ -286,6 +258,7 @@ export const Home = (): JSX.Element => {
                   <div className="font-sans font-bold text-sm tracking-[0] leading-normal mb-3">
                     Upload from device
                   </div>
+
                   {/* File Upload Area */}
                   <div
                     className="flex flex-col items-center justify-center w-full h-20 bg-white rounded-[12px] cursor-pointer transition-all duration-200 group"
@@ -302,13 +275,6 @@ export const Home = (): JSX.Element => {
                       e.currentTarget.style.border = "2px dashed #9ca3af";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.border = "2px dashed #e5e7eb";
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.border = "2px dashed #6b7280";
-                      e.currentTarget.style.outline = "none";
-                    }}
-                    onBlur={(e) => {
                       e.currentTarget.style.border = "2px dashed #e5e7eb";
                     }}
                     tabIndex={0}
@@ -336,7 +302,7 @@ export const Home = (): JSX.Element => {
 
                       {/* Text Column */}
                       <div className="flex-1 text-center">
-                        <div className="font-sans font-normal text-gray-300 text-sm tracking-[0] leading-normal">
+                        <div className="font-sans font-normal text-gray-400 text-sm tracking-[0] leading-normal">
                           Drag & drop or click here to select a file
                         </div>
                       </div>
@@ -421,9 +387,8 @@ export const Home = (): JSX.Element => {
               </Card>
             </div>
 
-            {/* Conditional Content: Show either Conversion Instructions or Your Files - Full Width */}
+            {/* Conditional Content: Show either Conversion Instructions or Your Files */}
             {!showProcessedFiles ? (
-              /* Conversion Instructions - Only show when no files have been processed */
               isMultiple ? (
                 <div className="flex flex-col sm:flex-row w-full gap-4 sm:gap-5">
                   {/* Processing Benefits Card */}

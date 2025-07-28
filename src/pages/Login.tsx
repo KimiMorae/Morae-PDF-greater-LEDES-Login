@@ -21,18 +21,7 @@ export const Login = (): JSX.Element => {
     setError(null);
 
     try {
-      const loginResponse = await login({ email, password });
-
-      console.log("Login successful:");
-      console.log(
-        "Access token:",
-        loginResponse.access_token.substring(0, 20) + "..."
-      );
-      console.log("Token type:", loginResponse.token_type);
-      console.log("Expires in:", loginResponse.expires_in);
-      console.log("Scope:", loginResponse.scope);
-      console.log("Client ID:", loginResponse.client_id);
-      console.log("Client Secret stored:", !!loginResponse.client_secret);
+      await login({ email, password });
 
       setLocation("/home");
     } catch (err) {
@@ -44,7 +33,6 @@ export const Login = (): JSX.Element => {
 
   const handleMicrosoftLogin = () => {
     // Microsoft OAuth integration would go here
-    console.log("Microsoft OAuth not implemented yet");
   };
   // Data for links in the login form
   const loginLinks = [
@@ -95,6 +83,7 @@ export const Login = (): JSX.Element => {
                         onChange={(e) => setEmail(e.target.value)}
                         className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal flex-1"
                         placeholder="Enter your email"
+                        autoComplete="email"
                         required
                       />
                     </div>
@@ -112,6 +101,7 @@ export const Login = (): JSX.Element => {
                         onChange={(e) => setPassword(e.target.value)}
                         className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal flex-1"
                         placeholder="Enter your password"
+                        autoComplete="current-password"
                         required
                       />
 

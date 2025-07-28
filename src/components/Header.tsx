@@ -1,7 +1,5 @@
-import { AlertTriangleIcon, LogOutIcon } from "lucide-react";
+import { AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
 import { HamburgerButton } from "@/components/Sidebar";
 
 interface HeaderProps {
@@ -13,14 +11,6 @@ export const Header = ({
   showAuthButtons = true,
   onMenuToggle,
 }: HeaderProps): JSX.Element => {
-  const { logout } = useAuth();
-  const [, setLocation] = useLocation();
-
-  const handleLogout = () => {
-    logout();
-    setLocation("/");
-  };
-
   return (
     <header className="flex w-full h-[95px] items-center justify-between px-4 sm:px-[25px] py-[21px] bg-[#fefefe] border-b-2 border-[#f9f9f9] flex-shrink-0">
       <div className="inline-flex items-center gap-3 sm:gap-[19px] relative flex-[0_0_auto]">
