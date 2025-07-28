@@ -1,23 +1,10 @@
-import {
-  AlertTriangleIcon,
-  SearchIcon,
-  MoreHorizontal,
-  Eye,
-  Download,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { FileDetailsModal } from "@/components/FileDetailsModal";
+import { ConditionalContent } from "@/components/ConditionalContent";
+import { UploadCard } from "@/components/UploadCard";
 import { useState } from "react";
-import {
-  uploadFiles,
-  downloadOriginalFile,
-  downloadProcessedFilesZip,
-  type UploadedFile,
-} from "@/lib/api";
+import { downloadProcessedFilesZip } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 // Processed files data structure
@@ -42,8 +29,6 @@ export const Home = (): JSX.Element => {
   const [selectedFileForDetails, setSelectedFileForDetails] =
     useState<ProcessedFile | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
   const isMultiple = selectedFiles.length > 1;
   const getButtonText = () => {
@@ -62,129 +47,31 @@ export const Home = (): JSX.Element => {
   };
   const buttonText = getButtonText();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+  const handleFileSelect = (files: File[]) => {
     setSelectedFiles(files);
     setUploadError(null); // Clear any previous errors
   };
 
-  const handleFileInputClick = () => {
-    const fileInput = document.getElementById("file-input") as HTMLInputElement;
-    if (fileInput) {
-      fileInput.click();
-    }
+  const handleConvert = () => {
+    // This will be handled by the UploadCard component
   };
 
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files);
-    const pdfFiles = files.filter((file) => file.type === "application/pdf");
-    setSelectedFiles(pdfFiles);
-    setUploadError(null); // Clear any previous errors
+  const handleProcessedFilesUpdate = (newFiles: ProcessedFile[]) => {
+    setProcessedFiles((prev) => [...newFiles, ...prev]);
   };
 
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-  };
-
-  const handleConvert = async () => {
-    if (selectedFiles.length === 0) return;
-
-    setIsConverting(true);
-    setUploadError(null);
-    setProcessingStep("Uploading files...");
-
-    try {
-      const result = await uploadFiles(
-        selectedFiles,
-        "iag",
-        "ledes",
-        0,
-        setProcessingStep
-      );
-
-      const ledeResults =
-        result.processing_results?.generate_lede?.results || [];
-
-      // Convert API response to ProcessedFile format
-      const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
-        (file: UploadedFile) => {
-          // Find the corresponding LEDE result for this file
-          const fileLedeResults = ledeResults.filter(
-            (lede: any) => lede.file_id === file.file_id
-          );
-
-          // Extract invoice name from the first LEDE result's file path
-          let invoiceName = `File ${file.file_id}`;
-          if (fileLedeResults.length > 0 && fileLedeResults[0].lede_xlsx_file) {
-            invoiceName = extractInvoiceName(fileLedeResults[0].lede_xlsx_file);
-          }
-
-          return {
-            id: result.run_id,
-            uploadReference: `#${file.file_id}`,
-            dateUploaded: new Date().toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }),
-            invoiceName: invoiceName,
-            invoices: fileLedeResults.length || 1,
-            status: "Success" as const,
-            fileIds: [file.file_id],
-            ledeResults: fileLedeResults,
-          };
-        }
-      );
-
-      setProcessedFiles((prev) => [...newProcessedFiles, ...prev]);
-      setSelectedFiles([]);
-      setUploadError(null);
-      setProcessingStep("");
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Upload and processing failed. Please try again.";
-      setUploadError(errorMessage);
-      setProcessingStep("");
-
-      if (!errorMessage.includes("Authentication tokens missing")) {
-        toast({
-          title: "Upload Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsConverting(false);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setSelectedFiles((files) => {
-      const newFiles = files.filter((_, i) => i !== index);
-      // Clear the file input value if no files remain
-      if (newFiles.length === 0) {
-        const fileInput = document.getElementById(
-          "file-input"
-        ) as HTMLInputElement;
-        if (fileInput) {
-          fileInput.value = "";
-        }
-      }
-      return newFiles;
-    });
-  };
-
-  // Extract invoice name from LEDE file path
-  const extractInvoiceName = (ledeFilePath: string): string => {
-    const filename = ledeFilePath.split("/").pop() || "";
-    // Remove "lede_" prefix and file extension
-    const invoiceName = filename
-      .replace(/^lede_/, "")
-      .replace(/\.(xlsx|json)$/, "");
-    return invoiceName || "Unknown Invoice";
+  const handleUploadStateChange = (state: {
+    isConverting?: boolean;
+    uploadError?: string | null;
+    processingStep?: string;
+    selectedFiles?: File[];
+  }) => {
+    if (state.isConverting !== undefined) setIsConverting(state.isConverting);
+    if (state.uploadError !== undefined) setUploadError(state.uploadError);
+    if (state.processingStep !== undefined)
+      setProcessingStep(state.processingStep);
+    if (state.selectedFiles !== undefined)
+      setSelectedFiles(state.selectedFiles);
   };
 
   const handleDownloadProcessed = async (fileIds: number[]) => {
@@ -205,15 +92,6 @@ export const Home = (): JSX.Element => {
 
   const handleCloseModal = () => {
     setSelectedFileForDetails(null);
-  };
-
-  const handleDropdownClick = (fileId: string, event: React.MouseEvent) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setDropdownPosition({
-      top: rect.bottom + 4,
-      left: rect.right - 160,
-    });
-    setActiveDropdown(activeDropdown === fileId ? null : fileId);
   };
 
   // Filter processed files based on search term (search by ID reference OR file name)
@@ -249,383 +127,31 @@ export const Home = (): JSX.Element => {
             </div>
 
             {/* Upload Card */}
-            <div className="w-80 mb-8">
-              <Card className="flex flex-col items-start gap-6 p-6 w-full bg-gray-50 rounded-[17px_23px_23px_23px] border-2 border-solid border-gray-300 shadow-[0px_2px_42px_#00000026]">
-                <CardContent className="p-0 w-full">
-                  <div className="font-sans font-bold text-black text-xl tracking-[0] leading-normal mb-6">
-                    Start here
-                  </div>
-                  <div className="font-sans font-bold text-sm tracking-[0] leading-normal mb-3">
-                    Upload from device
-                  </div>
-
-                  {/* File Upload Area */}
-                  <div
-                    className="flex flex-col items-center justify-center w-full h-20 bg-white rounded-[12px] cursor-pointer transition-all duration-200 group"
-                    style={{
-                      border: "2px dashed #e5e7eb",
-                      borderSpacing: "8px",
-                    }}
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onClick={() =>
-                      document.getElementById("file-input")?.click()
-                    }
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.border = "2px dashed #9ca3af";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.border = "2px dashed #e5e7eb";
-                    }}
-                    tabIndex={0}
-                  >
-                    <input
-                      id="file-input"
-                      type="file"
-                      multiple
-                      accept=".pdf,.zip"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-
-                    <div className="flex items-center px-4">
-                      {/* Icon Column */}
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[8px] flex items-center justify-center">
-                          <img
-                            src="/figmaAssets/upload-icon.svg"
-                            alt="Upload icon"
-                            className="w-6 h-6 sm:w-8 sm:h-8"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Text Column */}
-                      <div className="flex-1 text-center">
-                        <div className="font-sans font-normal text-gray-400 text-sm tracking-[0] leading-normal">
-                          Drag & drop or click here to select a file
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Convert Button */}
-                  <div className="flex items-center justify-center w-full mt-6">
-                    <Button
-                      onClick={
-                        selectedFiles.length === 0
-                          ? handleFileInputClick
-                          : handleConvert
-                      }
-                      disabled={isConverting}
-                      className="h-10 sm:h-[43px] px-4 sm:px-6 py-2 sm:py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-sm sm:text-base disabled:opacity-50"
-                    >
-                      {buttonText}
-                    </Button>
-                  </div>
-
-                  {/* Selected Files List */}
-                  {selectedFiles.length > 0 && (
-                    <div className="flex flex-col items-start gap-1 w-full mt-6">
-                      <label className="font-sans font-semibold text-black text-xs tracking-[0] leading-normal">
-                        Selected Files ({selectedFiles.length})
-                      </label>
-
-                      <div className="flex flex-col w-full max-h-48 sm:max-h-52 overflow-y-auto gap-2 p-3 sm:p-4 bg-white rounded border border-solid border-gray-300">
-                        {selectedFiles.map((file, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-2 bg-gray-50 rounded border"
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#2563eb"
-                                strokeWidth="2"
-                                className="flex-shrink-0"
-                              >
-                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                <polyline points="14,2 14,8 20,8" />
-                              </svg>
-                              <span className="font-sans font-normal text-black text-sm truncate flex-1">
-                                {file.name}
-                              </span>
-                              <span className="font-sans font-normal text-gray-600 text-xs flex-shrink-0 hidden sm:inline">
-                                (
-                                {Math.round((file.size / 1024 / 1024) * 100) /
-                                  100}{" "}
-                                MB)
-                              </span>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeFile(index);
-                              }}
-                              className="text-gray-500 hover:text-gray-700 text-sm ml-2 flex-shrink-0"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Error Display */}
-                  {uploadError && (
-                    <div className="flex items-center gap-2 p-3 bg-gray-100 border border-gray-300 rounded-lg mt-6">
-                      <AlertTriangleIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                      <span className="font-sans font-normal text-gray-700 text-sm">
-                        {uploadError}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <UploadCard
+              selectedFiles={selectedFiles}
+              isConverting={isConverting}
+              uploadError={uploadError}
+              processingStep={processingStep}
+              buttonText={buttonText}
+              onFileSelect={handleFileSelect}
+              onConvert={handleConvert}
+              onProcessedFilesUpdate={handleProcessedFilesUpdate}
+              onUploadStateChange={handleUploadStateChange}
+            />
 
             {/* Conditional Content: Show either Conversion Instructions or Your Files */}
-            {!showProcessedFiles ? (
-              isMultiple ? (
-                <div className="flex flex-col sm:flex-row w-full gap-4 sm:gap-5">
-                  {/* Processing Benefits Card */}
-                  <Card className="flex flex-col items-start gap-4 p-4 sm:p-5 flex-1 bg-gray-100 rounded-[12px] border border-solid border-gray-300">
-                    <CardContent className="p-0 space-y-3 w-full">
-                      <div className="font-sans font-semibold text-black text-base tracking-[0] leading-normal">
-                        Batch Processing
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          • Process up to 20 files simultaneously
-                        </div>
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          • Automated file organization
-                        </div>
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          • Progress tracking for each file
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Processing Timeline Card */}
-                  <Card className="flex flex-col items-start gap-4 p-4 sm:p-5 flex-1 bg-gray-100 rounded-[12px] border border-solid border-gray-300">
-                    <CardContent className="p-0 space-y-3 w-full">
-                      <div className="font-sans font-semibold text-black text-base tracking-[0] leading-normal">
-                        Processing Time
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          • 1-5 files: 2-5 minutes
-                        </div>
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          • 6-10 files: 5-10 minutes
-                        </div>
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          • 11-20 files: 10-20 minutes
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <Card className="flex flex-col items-start gap-4 p-4 sm:p-5 w-full bg-gray-100 rounded-[12px] border border-solid border-gray-300">
-                  <CardContent className="p-0 space-y-3 w-full">
-                    <div className="font-sans font-semibold text-black text-base tracking-[0] leading-normal">
-                      Conversion Instructions
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                        • Ensure your PDF contains structured legal billing data
-                      </div>
-                      <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                        • The conversion process typically takes 1-3 minutes
-                      </div>
-                      <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                        • You'll receive a downloadable LEDES file upon
-                        completion
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            ) : (
-              /* Your Files Section - Show when files have been processed */
-              <div className="w-full space-y-4 sm:space-y-6">
-                {/* Your Files Header */}
-                <div className="font-sans font-bold text-black text-xl sm:text-2xl tracking-[0] leading-normal">
-                  Your files
-                </div>
-
-                {/* Search Bar */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                  <div className="relative flex-1 max-w-full sm:max-w-md">
-                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Search by ID or file name..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 h-10 border border-gray-300 rounded-sm font-sans text-sm w-full"
-                    />
-                  </div>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-10 px-3 rounded-lg w-full sm:w-auto"
-                  >
-                    <img
-                      className="w-4 h-4"
-                      alt="Profile"
-                      src="/figmaAssets/filter.svg"
-                    />
-                    <span className="ml-2 sm:hidden">Filter</span>
-                  </Button>
-                </div>
-
-                {/* Files Table */}
-                <div className="overflow-x-auto w-[85%]">
-                  <div className="bg-white rounded-lg p-0 min-w-[600px]">
-                    {/* Table Header */}
-                    <div className="flex p-4">
-                      <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
-                        File ID
-                      </div>
-                      <div className="flex-[3] font-sans font-bold text-gray-700 text-sm">
-                        File Name
-                      </div>
-                      <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
-                        Date Uploaded
-                      </div>
-                      <div className="flex-[1] font-sans font-bold text-gray-700 text-sm text-center">
-                        Invoices
-                      </div>
-                      <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
-                        Status
-                      </div>
-                      <div className="flex-shrink-0 w-12 font-sans font-bold text-gray-700 text-sm">
-                        {/* Actions column - no header */}
-                      </div>
-                    </div>
-
-                    {/* Table Rows */}
-                    <div
-                      className="max-h-64 sm:max-h-80 overflow-y-auto"
-                      style={{ overflow: "visible" }}
-                    >
-                      {filteredProcessedFiles.map((file, index) => (
-                        <div
-                          key={file.id}
-                          className={`p-4 hover:bg-blue-50 ${
-                            index % 2 === 1 ? "bg-gray-50" : ""
-                          }`}
-                        >
-                          {/* Table Layout */}
-                          <div className="flex items-center">
-                            <div className="flex-[2] font-sans font-normal text-gray-700 text-sm">
-                              {file.uploadReference}
-                            </div>
-                            <div className="flex-[3] font-sans font-normal text-gray-600 text-sm truncate">
-                              {file.invoiceName}
-                            </div>
-                            <div className="flex-[2] font-sans font-normal text-gray-600 text-sm">
-                              {file.dateUploaded}
-                            </div>
-                            <div className="flex-[1] font-sans font-normal text-gray-600 text-sm text-center">
-                              {file.invoices}
-                            </div>
-                            <div
-                              className={`flex-[2] font-sans font-normal text-sm ${
-                                file.status === "Success"
-                                  ? "text-gray-700"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              {file.status}
-                            </div>
-                            <div className="flex-shrink-0 w-12 flex justify-center">
-                              {file.status === "Success" && file.fileIds && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 hover:bg-gray-100"
-                                  onClick={(e) =>
-                                    handleDropdownClick(file.id, e)
-                                  }
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      {filteredProcessedFiles.length === 0 && searchTerm && (
-                        <div className="p-6 sm:p-8 text-center text-gray-500">
-                          <div className="font-sans text-sm">
-                            No files found matching "{searchTerm}"
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <ConditionalContent
+              showProcessedFiles={showProcessedFiles}
+              isMultiple={isMultiple}
+              filteredProcessedFiles={filteredProcessedFiles}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onViewDetails={handleViewDetails}
+              onDownload={handleDownloadProcessed}
+            />
           </div>
         </div>
       </div>
-
-      {/* Dropdown Menu - Positioned absolutely */}
-      {activeDropdown && (
-        <>
-          <div
-            className="fixed inset-0 z-[99998]"
-            onClick={() => setActiveDropdown(null)}
-          />
-          <div
-            className="fixed w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[99999]"
-            style={{
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-            }}
-          >
-            <button
-              onClick={() => {
-                const file = filteredProcessedFiles.find(
-                  (f) => f.id === activeDropdown
-                );
-                if (file) handleViewDetails(file);
-                setActiveDropdown(null);
-              }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-md"
-            >
-              <Eye className="w-4 h-4" />
-              View Details
-            </button>
-            <button
-              onClick={() => {
-                const file = filteredProcessedFiles.find(
-                  (f) => f.id === activeDropdown
-                );
-                if (file) handleDownloadProcessed(file.fileIds);
-                setActiveDropdown(null);
-              }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-md"
-            >
-              <Download className="w-4 h-4" />
-              Download ZIP
-            </button>
-          </div>
-        </>
-      )}
 
       {/* File Details Modal */}
       <FileDetailsModal
