@@ -14,6 +14,10 @@ interface ProcessedFile {
   status: "Success" | "Error";
   fileIds: number[];
   ledeResults?: any[];
+  // Additional metadata for grouped uploads
+  uploadedFiles?: UploadedFile[];
+  originalFileName?: string;
+  isZipUpload?: boolean;
 }
 
 interface UploadCardProps {
@@ -86,36 +90,62 @@ export const UploadCard = ({
       const ledeResults =
         result.processing_results?.generate_lede?.results || [];
 
-      // Convert API response to ProcessedFile format
-      const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
-        (file: UploadedFile) => {
-          // Find the corresponding LEDE result for this file
-          const fileLedeResults = ledeResults.filter(
-            (lede: any) => lede.file_id === file.file_id
-          );
+      // Determine if this was a zip upload or single file upload
+      const isZipUpload =
+        selectedFiles.length === 1 &&
+        selectedFiles[0].name.toLowerCase().endsWith(".zip");
+      const uploadedFileName = selectedFiles[0]?.name || "Unknown";
 
-          // Extract invoice name from the first LEDE result's file path
-          let invoiceName = `File ${file.file_id}`;
-          if (fileLedeResults.length > 0 && fileLedeResults[0].lede_xlsx_file) {
-            invoiceName = extractInvoiceName(fileLedeResults[0].lede_xlsx_file);
-          }
-
-          return {
-            id: result.run_id,
-            uploadReference: `#${file.file_id}`,
-            dateUploaded: new Date().toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }),
-            invoiceName: invoiceName,
-            invoices: fileLedeResults.length || 1,
-            status: "Success" as const,
-            fileIds: [file.file_id],
-            ledeResults: fileLedeResults,
-          };
-        }
+      const validUploadedFiles = result.files_uploaded.filter(
+        (file: UploadedFile) => !file.filename.startsWith("._")
       );
+
+      const allFileIds = validUploadedFiles.map(
+        (file: UploadedFile) => file.file_id
+      );
+      const allLedeResults = ledeResults;
+
+      // Calculate total invoices across all valid files
+      const totalInvoices = allLedeResults.length || validUploadedFiles.length;
+
+      // Determine the display name
+      let displayName: string;
+      if (isZipUpload) {
+        // For zip files, use the zip file name
+        displayName = uploadedFileName.replace(".zip", "");
+      } else if (selectedFiles.length === 1) {
+        // For single PDF files, extract invoice name from LEDE results or use filename
+        if (allLedeResults.length > 0 && allLedeResults[0].lede_xlsx_file) {
+          displayName = extractInvoiceName(allLedeResults[0].lede_xlsx_file);
+        } else {
+          displayName = uploadedFileName.replace(".pdf", "");
+        }
+      } else {
+        // For multiple files (shouldn't happen with current UI, but just in case)
+        displayName = `${selectedFiles.length} files`;
+      }
+
+      // Create a single ProcessedFile entry that represents the entire upload session
+      const newProcessedFiles: ProcessedFile[] = [
+        {
+          id: result.run_id,
+          uploadReference: `#${result.run_id}`,
+          dateUploaded: new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          invoiceName: displayName,
+          invoices: totalInvoices,
+          status: "Success" as const,
+          fileIds: allFileIds,
+          ledeResults: allLedeResults,
+          // Add metadata to help with View Details
+          uploadedFiles: validUploadedFiles,
+          originalFileName: uploadedFileName,
+          isZipUpload: isZipUpload,
+        },
+      ];
 
       onProcessedFilesUpdate(newProcessedFiles);
       onUploadStateChange({

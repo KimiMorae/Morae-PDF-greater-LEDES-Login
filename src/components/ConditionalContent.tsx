@@ -14,6 +14,10 @@ interface ProcessedFile {
   status: "Success" | "Error";
   fileIds: number[];
   ledeResults?: any[];
+  // Additional metadata for grouped uploads
+  uploadedFiles?: any[];
+  originalFileName?: string;
+  isZipUpload?: boolean;
 }
 
 interface ConditionalContentProps {

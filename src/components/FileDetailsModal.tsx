@@ -9,6 +9,10 @@ interface ProcessedFile {
   status: "Success" | "Error";
   fileIds: number[];
   ledeResults?: any[];
+  // Additional metadata for grouped uploads
+  uploadedFiles?: any[];
+  originalFileName?: string;
+  isZipUpload?: boolean;
 }
 
 interface FileDetailsModalProps {
@@ -24,17 +28,48 @@ export const FileDetailsModal = ({
 }: FileDetailsModalProps) => {
   if (!file) return null;
 
-  const ledesFiles = file.ledeResults?.map((result: any, index: number) => ({
-    name: `${file.invoiceName}_LEDES`,
-    dateCreated: file.dateUploaded,
-    status: file.status,
-  })) || [
-    {
-      name: `LEDES_${file.invoiceName}.xlsx`,
-      dateCreated: file.dateUploaded,
-      status: file.status,
-    },
-  ];
+  // Show LEDES XLSX output files for each individual source file that was uploaded
+  const validUploadedFiles =
+    file.uploadedFiles?.filter(
+      (uploadedFile: any) => !uploadedFile.filename.startsWith("._")
+    ) || [];
+
+  const ledesFiles = validUploadedFiles.map(
+    (uploadedFile: any, index: number) => {
+      // Find the corresponding LEDE result for this specific uploaded file
+      const fileLedeResult = file.ledeResults?.find(
+        (lede: any) => lede.file_id === uploadedFile.file_id
+      );
+
+      // Extract XLSX filename from the API response
+      let ledesFileName = `${uploadedFile.filename.replace(
+        /\.pdf$/i,
+        ""
+      )}_LEDES.xlsx`;
+      if (fileLedeResult?.lede_xlsx_file) {
+        const xlsxPath = fileLedeResult.lede_xlsx_file;
+        ledesFileName = xlsxPath.split("/").pop() || ledesFileName;
+      }
+
+      return {
+        name: ledesFileName,
+        dateCreated: file.dateUploaded,
+        status: fileLedeResult?.status || file.status,
+      };
+    }
+  );
+
+  // Fallback if no valid files found
+  const finalLedesFiles =
+    ledesFiles.length > 0
+      ? ledesFiles
+      : [
+          {
+            name: `LEDES_${file.invoiceName}.xlsx`,
+            dateCreated: file.dateUploaded,
+            status: file.status,
+          },
+        ];
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -80,7 +115,7 @@ export const FileDetailsModal = ({
             </div>
 
             {/* Table Rows */}
-            {ledesFiles.map((ledesFile, index) => (
+            {finalLedesFiles.map((ledesFile, index) => (
               <div
                 key={index}
                 className={`px-4 py-3 flex items-center hover:bg-blue-50 min-w-[600px] ${
