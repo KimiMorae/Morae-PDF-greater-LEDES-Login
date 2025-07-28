@@ -1,34 +1,51 @@
-import { AlertTriangleIcon, SearchIcon, FilterIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  SearchIcon,
+  FilterIcon,
+  LogOutIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { uploadFiles, type UploadedFile } from "@/lib/api";
+import {
+  uploadFiles,
+  downloadOriginalFile,
+  downloadProcessedFilesZip,
+  type UploadedFile,
+} from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useClientInfo } from "@/hooks/useUserProfile";
+import { useLocation } from "wouter";
 
-// Mock processed files data structure
+// Processed files data structure
 interface ProcessedFile {
   id: string;
   uploadReference: string;
   dateUploaded: string;
-  invoices: number;
+  invoiceName: string;
   status: "Success" | "Error";
+  fileIds: number[];
+  ledeResults?: any[];
 }
 
 export const Home = (): JSX.Element => {
-  // Console log environment variables when home page loads
-  console.log("=== HOME PAGE LOADED ===");
-  console.log("Authentication credentials verified:", {
-    email: import.meta.env.VITE_USER_EMAIL,
-    password: import.meta.env.VITE_USER_PASSWORD,
-    clientId: import.meta.env.VITE_CLIENT_ID,
-    clientSecret: import.meta.env.VITE_CLIENT_SECRET,
-  });
+  const { logout } = useAuth();
+  const { clientId } = useClientInfo();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    logout();
+    setLocation("/");
+  };
   console.log("========================");
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isConverting, setIsConverting] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [processingStep, setProcessingStep] = useState<string>("");
 
   const isMultiple = selectedFiles.length > 1;
   const pageTitle = isMultiple ? "Multiple LEDES" : "One LEDES";
@@ -38,6 +55,7 @@ export const Home = (): JSX.Element => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     setSelectedFiles(files);
+    setUploadError(null); // Clear any previous errors
   };
 
   const handleDrop = (event: React.DragEvent) => {
@@ -45,6 +63,7 @@ export const Home = (): JSX.Element => {
     const files = Array.from(event.dataTransfer.files);
     const pdfFiles = files.filter((file) => file.type === "application/pdf");
     setSelectedFiles(pdfFiles);
+    setUploadError(null); // Clear any previous errors
   };
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -53,35 +72,80 @@ export const Home = (): JSX.Element => {
 
   const handleConvert = async () => {
     if (selectedFiles.length === 0) return;
+
     setIsConverting(true);
+    setUploadError(null);
+    setProcessingStep("Uploading files...");
 
     try {
-      console.log("Starting file upload...");
-      const result = await uploadFiles(selectedFiles);
+      console.log("Starting file upload and processing...");
+      console.log("Client ID available:", !!clientId);
+      console.log("Using client_id:", clientId);
+      console.log("Files to upload:", selectedFiles.length);
 
-      console.log("Upload response:", result);
+      const result = await uploadFiles(
+        selectedFiles,
+        "iag",
+        "ledes",
+        0,
+        setProcessingStep
+      );
+      console.log("Complete processing response:", result);
+
+      // Extract file IDs and LEDE results from the complete processing response
+      const fileIds =
+        result.files_uploaded?.map((file: UploadedFile) => file.file_id) || [];
+      const ledeResults =
+        result.processing_results?.generate_lede?.results || [];
 
       // Convert API response to ProcessedFile format
       const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
-        (file: UploadedFile) => ({
-          id: result.run_id,
-          uploadReference: `#${file.file_id}`,
-          dateUploaded: new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          invoices: Math.floor(Math.random() * 300) + 50, // This would come from actual processing
-          status: "Success" as const,
-        })
+        (file: UploadedFile) => {
+          // Find the corresponding LEDE result for this file
+          const fileLedeResults = ledeResults.filter(
+            (lede: any) => lede.file_id === file.file_id
+          );
+
+          // Extract invoice name from the first LEDE result's file path
+          let invoiceName = `File ${file.file_id}`;
+          if (fileLedeResults.length > 0 && fileLedeResults[0].lede_xlsx_file) {
+            invoiceName = extractInvoiceName(fileLedeResults[0].lede_xlsx_file);
+          }
+
+          return {
+            id: result.run_id,
+            uploadReference: `#${file.file_id}`,
+            dateUploaded: new Date().toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            invoiceName: invoiceName,
+            status: "Success" as const,
+            fileIds: [file.file_id],
+            ledeResults: fileLedeResults,
+          };
+        }
       );
 
       setProcessedFiles((prev) => [...newProcessedFiles, ...prev]);
       setSelectedFiles([]);
+      setUploadError(null);
+      setProcessingStep("");
     } catch (error) {
-      console.error("Upload failed:", error);
-      // Handle error - could show a toast notification
-      alert("Upload failed. Please try again.");
+      console.error("Upload and processing failed:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Upload and processing failed. Please try again.";
+      setUploadError(errorMessage);
+      setProcessingStep("");
+
+      // If it's an authentication error, the refresh logic should have handled redirect
+      // Otherwise, show the error to the user
+      if (!errorMessage.includes("Authentication tokens missing")) {
+        alert(errorMessage);
+      }
     } finally {
       setIsConverting(false);
     }
@@ -89,6 +153,44 @@ export const Home = (): JSX.Element => {
 
   const removeFile = (index: number) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index));
+  };
+
+  // Extract invoice name from LEDE file path
+  const extractInvoiceName = (ledeFilePath: string): string => {
+    // Extract filename from path: "/media/output/.../lede_Invoice_AU01-0041174R.xlsx"
+    const filename = ledeFilePath.split("/").pop() || "";
+    // Remove "lede_" prefix and file extension
+    const invoiceName = filename
+      .replace(/^lede_/, "")
+      .replace(/\.(xlsx|json)$/, "");
+    return invoiceName || "Unknown Invoice";
+  };
+
+  const handleDownloadOriginal = async (fileIds: number[]) => {
+    try {
+      if (fileIds.length === 1) {
+        await downloadOriginalFile(fileIds[0]);
+      } else {
+        // Download multiple original files one by one
+        for (const fileId of fileIds) {
+          await downloadOriginalFile(fileId);
+          // Add small delay between downloads
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Download failed. Please try again.");
+    }
+  };
+
+  const handleDownloadProcessed = async (fileIds: number[]) => {
+    try {
+      await downloadProcessedFilesZip(fileIds);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Download failed. Please try again.");
+    }
   };
 
   // Filter processed files based on search term
@@ -236,6 +338,16 @@ export const Home = (): JSX.Element => {
                   </div>
                 )}
 
+                {/* Error Display */}
+                {uploadError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertTriangleIcon className="w-4 h-4 text-red-500" />
+                    <span className="font-sans font-normal text-red-700 text-sm">
+                      {uploadError}
+                    </span>
+                  </div>
+                )}
+
                 {/* Convert Button */}
                 <div className="flex items-center justify-end self-stretch w-full gap-2.5 relative flex-[0_0_auto]">
                   <Button
@@ -243,7 +355,9 @@ export const Home = (): JSX.Element => {
                     disabled={selectedFiles.length === 0 || isConverting}
                     className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base disabled:opacity-50"
                   >
-                    {isConverting ? "Converting..." : buttonText}
+                    {isConverting
+                      ? processingStep || "Processing..."
+                      : buttonText}
                   </Button>
                 </div>
               </CardContent>
@@ -351,18 +465,18 @@ export const Home = (): JSX.Element => {
                 <Card className="bg-white rounded-lg border border-gray-200">
                   <CardContent className="p-0">
                     {/* Table Header */}
-                    <div className="grid grid-cols-4 gap-4 p-4 border-b border-gray-200 bg-gray-50">
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Upload reference
+                    <div className="flex p-4 border-b border-gray-200 bg-gray-50">
+                      <div className="flex-shrink-0 w-24 font-sans font-semibold text-gray-700 text-sm">
+                        Upload ID
                       </div>
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Date uploaded
+                      <div className="flex-1 px-4 font-sans font-semibold text-gray-700 text-sm">
+                        Invoice Name
                       </div>
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Invoices
-                      </div>
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
+                      <div className="flex-shrink-0 w-20 font-sans font-semibold text-gray-700 text-sm">
                         Status
+                      </div>
+                      <div className="flex-shrink-0 w-48 font-sans font-semibold text-gray-700 text-sm">
+                        Downloads
                       </div>
                     </div>
 
@@ -371,27 +485,52 @@ export const Home = (): JSX.Element => {
                       {filteredProcessedFiles.map((file, index) => (
                         <div
                           key={file.id}
-                          className={`grid grid-cols-4 gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                          className={`flex p-4 border-b border-gray-100 hover:bg-gray-50 ${
                             index === 0 ? "bg-blue-50" : ""
                           }`}
                         >
-                          <div className="font-sans font-medium text-blue-600 text-sm">
+                          <div className="flex-shrink-0 w-24 font-sans font-medium text-blue-600 text-sm">
                             {file.uploadReference}
                           </div>
-                          <div className="font-sans text-gray-600 text-sm">
-                            {file.dateUploaded}
-                          </div>
-                          <div className="font-sans text-gray-600 text-sm">
-                            {file.invoices}
+                          <div className="flex-1 px-4 font-sans text-gray-600 text-sm truncate">
+                            {file.invoiceName}
                           </div>
                           <div
-                            className={`font-sans text-sm ${
+                            className={`flex-shrink-0 w-20 font-sans text-sm ${
                               file.status === "Success"
                                 ? "text-green-600"
                                 : "text-red-600"
                             }`}
                           >
                             {file.status}
+                          </div>
+                          <div className="flex-shrink-0 w-48 flex gap-2">
+                            {file.status === "Success" && file.fileIds && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleDownloadOriginal(file.fileIds)
+                                  }
+                                  className="h-8 px-3 text-xs"
+                                >
+                                  Original File
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleDownloadProcessed(file.fileIds)
+                                  }
+                                  className="h-8 px-3 text-xs"
+                                >
+                                  {file.fileIds.length === 1
+                                    ? "LEDEs ZIP"
+                                    : "All ZIP"}
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -434,15 +573,28 @@ export const Home = (): JSX.Element => {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
-          >
-            <AlertTriangleIcon className="w-7 h-7" />
-            <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
-              Support
-            </span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
+            >
+              <AlertTriangleIcon className="w-7 h-7" />
+              <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
+                Support
+              </span>
+            </Button>
+
+            <Button
+              onClick={handleLogout}
+              variant="ghost"
+              className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px] hover:bg-red-50"
+            >
+              <LogOutIcon className="w-5 h-5 text-red-600" />
+              <span className="font-sans font-normal text-red-600 text-sm tracking-[0] leading-normal">
+                Logout
+              </span>
+            </Button>
+          </div>
         </header>
       </div>
     </div>
