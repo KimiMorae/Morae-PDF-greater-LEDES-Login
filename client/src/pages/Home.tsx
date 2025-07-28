@@ -13,7 +13,7 @@ interface ProcessedFile {
   id: string;
   uploadReference: string;
   dateUploaded: string;
-  invoices: number;
+  invoiceName: string;
   status: "Success" | "Error";
   fileIds: number[];
   ledeResults?: any[];
@@ -82,18 +82,30 @@ export const Home = (): JSX.Element => {
 
       // Convert API response to ProcessedFile format
       const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
-        (file: UploadedFile) => ({
-          id: result.run_id,
-          uploadReference: `#${file.file_id}`,
-          dateUploaded: new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          status: "Success" as const,
-          fileIds: [file.file_id],
-          ledeResults: ledeResults.filter((lede: any) => lede.file_id === file.file_id),
-        })
+        (file: UploadedFile) => {
+          // Find the corresponding LEDE result for this file
+          const fileLedeResults = ledeResults.filter((lede: any) => lede.file_id === file.file_id);
+
+          // Extract invoice name from the first LEDE result's file path
+          let invoiceName = `File ${file.file_id}`;
+          if (fileLedeResults.length > 0 && fileLedeResults[0].lede_xlsx_file) {
+            invoiceName = extractInvoiceName(fileLedeResults[0].lede_xlsx_file);
+          }
+
+          return {
+            id: result.run_id,
+            uploadReference: `#${file.file_id}`,
+            dateUploaded: new Date().toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            invoiceName: invoiceName,
+            status: "Success" as const,
+            fileIds: [file.file_id],
+            ledeResults: fileLedeResults,
+          };
+        }
       );
 
       setProcessedFiles((prev) => [...newProcessedFiles, ...prev]);
@@ -118,6 +130,15 @@ export const Home = (): JSX.Element => {
 
   const removeFile = (index: number) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index));
+  };
+
+  // Extract invoice name from LEDE file path
+  const extractInvoiceName = (ledeFilePath: string): string => {
+    // Extract filename from path: "/media/output/.../lede_Invoice_AU01-0041174R.xlsx"
+    const filename = ledeFilePath.split('/').pop() || '';
+    // Remove "lede_" prefix and file extension
+    const invoiceName = filename.replace(/^lede_/, '').replace(/\.(xlsx|json)$/, '');
+    return invoiceName || 'Unknown Invoice';
   };
 
   const handleDownloadOriginal = async (fileIds: number[]) => {
@@ -417,17 +438,17 @@ export const Home = (): JSX.Element => {
                 <Card className="bg-white rounded-lg border border-gray-200">
                   <CardContent className="p-0">
                     {/* Table Header */}
-                    <div className="grid grid-cols-5 gap-4 p-4 border-b border-gray-200 bg-gray-50">
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Upload reference
+                    <div className="flex p-4 border-b border-gray-200 bg-gray-50">
+                      <div className="flex-shrink-0 w-24 font-sans font-semibold text-gray-700 text-sm">
+                        Upload ID
                       </div>
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
-                        Date uploaded
+                      <div className="flex-1 px-4 font-sans font-semibold text-gray-700 text-sm">
+                        Invoice Name
                       </div>
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
+                      <div className="flex-shrink-0 w-20 font-sans font-semibold text-gray-700 text-sm">
                         Status
                       </div>
-                      <div className="font-sans font-semibold text-gray-700 text-sm">
+                      <div className="flex-shrink-0 w-48 font-sans font-semibold text-gray-700 text-sm">
                         Downloads
                       </div>
                     </div>
@@ -437,18 +458,18 @@ export const Home = (): JSX.Element => {
                       {filteredProcessedFiles.map((file, index) => (
                         <div
                           key={file.id}
-                          className={`grid grid-cols-5 gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 ${
+                          className={`flex p-4 border-b border-gray-100 hover:bg-gray-50 ${
                             index === 0 ? "bg-blue-50" : ""
                           }`}
                         >
-                          <div className="font-sans font-medium text-blue-600 text-sm">
+                          <div className="flex-shrink-0 w-24 font-sans font-medium text-blue-600 text-sm">
                             {file.uploadReference}
                           </div>
-                          <div className="font-sans text-gray-600 text-sm">
-                            {file.dateUploaded}
+                          <div className="flex-1 px-4 font-sans text-gray-600 text-sm truncate">
+                            {file.invoiceName}
                           </div>
                           <div
-                            className={`font-sans text-sm ${
+                            className={`flex-shrink-0 w-20 font-sans text-sm ${
                               file.status === "Success"
                                 ? "text-green-600"
                                 : "text-red-600"
@@ -456,7 +477,7 @@ export const Home = (): JSX.Element => {
                           >
                             {file.status}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex-shrink-0 w-48 flex gap-2">
                             {file.status === "Success" && file.fileIds && (
                               <>
                                 <Button
@@ -465,7 +486,7 @@ export const Home = (): JSX.Element => {
                                   onClick={() => handleDownloadOriginal(file.fileIds)}
                                   className="h-8 px-3 text-xs"
                                 >
-                                  Single File
+                                  Original File
                                 </Button>
                                 <Button
                                   variant="outline"
