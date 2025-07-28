@@ -1,9 +1,19 @@
-import { AlertTriangleIcon, SearchIcon, FilterIcon, LogOutIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  SearchIcon,
+  FilterIcon,
+  LogOutIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { uploadFiles, downloadOriginalFile, downloadProcessedFilesZip, type UploadedFile } from "@/lib/api";
+import {
+  uploadFiles,
+  downloadOriginalFile,
+  downloadProcessedFilesZip,
+  type UploadedFile,
+} from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientInfo } from "@/hooks/useUserProfile";
 import { useLocation } from "wouter";
@@ -73,18 +83,28 @@ export const Home = (): JSX.Element => {
       console.log("Using client_id:", clientId);
       console.log("Files to upload:", selectedFiles.length);
 
-      const result = await uploadFiles(selectedFiles, "iag", "ledes", 0, setProcessingStep);
+      const result = await uploadFiles(
+        selectedFiles,
+        "iag",
+        "ledes",
+        0,
+        setProcessingStep
+      );
       console.log("Complete processing response:", result);
 
       // Extract file IDs and LEDE results from the complete processing response
-      const fileIds = result.files_uploaded?.map((file: UploadedFile) => file.file_id) || [];
-      const ledeResults = result.processing_results?.generate_lede?.results || [];
+      const fileIds =
+        result.files_uploaded?.map((file: UploadedFile) => file.file_id) || [];
+      const ledeResults =
+        result.processing_results?.generate_lede?.results || [];
 
       // Convert API response to ProcessedFile format
       const newProcessedFiles: ProcessedFile[] = result.files_uploaded.map(
         (file: UploadedFile) => {
           // Find the corresponding LEDE result for this file
-          const fileLedeResults = ledeResults.filter((lede: any) => lede.file_id === file.file_id);
+          const fileLedeResults = ledeResults.filter(
+            (lede: any) => lede.file_id === file.file_id
+          );
 
           // Extract invoice name from the first LEDE result's file path
           let invoiceName = `File ${file.file_id}`;
@@ -114,13 +134,16 @@ export const Home = (): JSX.Element => {
       setProcessingStep("");
     } catch (error) {
       console.error("Upload and processing failed:", error);
-      const errorMessage = error instanceof Error ? error.message : "Upload and processing failed. Please try again.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Upload and processing failed. Please try again.";
       setUploadError(errorMessage);
       setProcessingStep("");
 
       // If it's an authentication error, the refresh logic should have handled redirect
       // Otherwise, show the error to the user
-      if (!errorMessage.includes('Authentication tokens missing')) {
+      if (!errorMessage.includes("Authentication tokens missing")) {
         alert(errorMessage);
       }
     } finally {
@@ -135,10 +158,12 @@ export const Home = (): JSX.Element => {
   // Extract invoice name from LEDE file path
   const extractInvoiceName = (ledeFilePath: string): string => {
     // Extract filename from path: "/media/output/.../lede_Invoice_AU01-0041174R.xlsx"
-    const filename = ledeFilePath.split('/').pop() || '';
+    const filename = ledeFilePath.split("/").pop() || "";
     // Remove "lede_" prefix and file extension
-    const invoiceName = filename.replace(/^lede_/, '').replace(/\.(xlsx|json)$/, '');
-    return invoiceName || 'Unknown Invoice';
+    const invoiceName = filename
+      .replace(/^lede_/, "")
+      .replace(/\.(xlsx|json)$/, "");
+    return invoiceName || "Unknown Invoice";
   };
 
   const handleDownloadOriginal = async (fileIds: number[]) => {
@@ -150,12 +175,12 @@ export const Home = (): JSX.Element => {
         for (const fileId of fileIds) {
           await downloadOriginalFile(fileId);
           // Add small delay between downloads
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
     } catch (error) {
-      console.error('Download failed:', error);
-      alert('Download failed. Please try again.');
+      console.error("Download failed:", error);
+      alert("Download failed. Please try again.");
     }
   };
 
@@ -163,8 +188,8 @@ export const Home = (): JSX.Element => {
     try {
       await downloadProcessedFilesZip(fileIds);
     } catch (error) {
-      console.error('Download failed:', error);
-      alert('Download failed. Please try again.');
+      console.error("Download failed:", error);
+      alert("Download failed. Please try again.");
     }
   };
 
@@ -330,7 +355,9 @@ export const Home = (): JSX.Element => {
                     disabled={selectedFiles.length === 0 || isConverting}
                     className="h-[43px] px-6 py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-base disabled:opacity-50"
                   >
-                    {isConverting ? (processingStep || "Processing...") : buttonText}
+                    {isConverting
+                      ? processingStep || "Processing..."
+                      : buttonText}
                   </Button>
                 </div>
               </CardContent>
@@ -483,7 +510,9 @@ export const Home = (): JSX.Element => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleDownloadOriginal(file.fileIds)}
+                                  onClick={() =>
+                                    handleDownloadOriginal(file.fileIds)
+                                  }
                                   className="h-8 px-3 text-xs"
                                 >
                                   Original File
@@ -491,10 +520,14 @@ export const Home = (): JSX.Element => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleDownloadProcessed(file.fileIds)}
+                                  onClick={() =>
+                                    handleDownloadProcessed(file.fileIds)
+                                  }
                                   className="h-8 px-3 text-xs"
                                 >
-                                  {file.fileIds.length === 1 ? 'LEDEs ZIP' : 'All ZIP'}
+                                  {file.fileIds.length === 1
+                                    ? "LEDEs ZIP"
+                                    : "All ZIP"}
                                 </Button>
                               </>
                             )}
