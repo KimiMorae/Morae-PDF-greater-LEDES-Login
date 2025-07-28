@@ -9,12 +9,8 @@ import { login } from "@/lib/api";
 export const Login = (): JSX.Element => {
   const [, setLocation] = useLocation();
 
-  const [email, setEmail] = useState(
-    import.meta.env.VITE_USER_EMAIL || ""
-  );
-  const [password, setPassword] = useState(
-    import.meta.env.VITE_USER_PASSWORD || ""
-  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +23,10 @@ export const Login = (): JSX.Element => {
       const loginResponse = await login({ email, password });
 
       console.log("Login successful:");
-      console.log("Access token:", loginResponse.access_token.substring(0, 20) + "...");
+      console.log(
+        "Access token:",
+        loginResponse.access_token.substring(0, 20) + "..."
+      );
       console.log("Token type:", loginResponse.token_type);
       console.log("Expires in:", loginResponse.expires_in);
       console.log("Scope:", loginResponse.scope);
@@ -53,20 +52,59 @@ export const Login = (): JSX.Element => {
   ];
 
   return (
-    <div className="bg-white flex flex-row justify-center w-full">
-      <div className="bg-white w-full max-w-[1728px] h-[1117px] relative">
-        <div className="absolute w-full h-[1022px] top-[95px] left-0 bg-[url(/figmaAssets/background-image.png)] bg-cover bg-[50%_50%]">
-          <div className="absolute top-[21px] left-[305px] font-sans font-bold text-black text-[32px] tracking-[0] leading-normal">
-            Welcome
+    <div className="bg-white flex flex-col min-h-screen w-full">
+      {/* Header */}
+      <header className="flex w-full h-[95px] items-center justify-between px-4 sm:px-[25px] py-[21px] bg-[#fefefe] border-b-2 border-[#f9f9f9] flex-shrink-0">
+        <div className="inline-flex items-center gap-3 sm:gap-[19px] relative flex-[0_0_auto]">
+          <img
+            className="relative flex-[0_0_auto] h-8 sm:h-auto"
+            alt="Morae logo"
+            src="/figmaAssets/morae-logo.svg"
+          />
+
+          <div className="relative w-10 h-10 sm:w-[52px] sm:h-[52px] bg-[#d3e4f3] rounded-full">
+            <img
+              className="absolute w-8 h-6 sm:w-[49px] sm:h-10 top-2 left-1 sm:top-3 sm:left-[3px]"
+              alt="Subtract"
+              src="/figmaAssets/subtract.svg"
+            />
           </div>
 
+          <div className="flex flex-col items-start gap-[3px] relative">
+            <div className="relative font-sans font-bold text-black text-lg sm:text-xl tracking-[0] leading-normal">
+              PDF → LEDES
+            </div>
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
+        >
+          <AlertTriangleIcon className="w-5 h-5 sm:w-7 sm:h-7" />
+          <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal hidden sm:inline">
+            Support
+          </span>
+        </Button>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 w-full bg-[url(/figmaAssets/background-image.png)] bg-cover bg-center relative flex flex-col">
+        {/* Welcome Section */}
+        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-4 p-4 sm:p-8">
           <img
-            className="absolute w-[260px] h-2 top-[38px] left-5"
+            className="w-32 sm:w-[260px] h-1 sm:h-2 order-2 sm:order-1"
             alt="Ellipses container"
             src="/figmaAssets/ellipses-container.png"
           />
+          <div className="font-sans font-bold text-black text-2xl sm:text-[32px] tracking-[0] leading-normal order-1 sm:order-2">
+            Welcome
+          </div>
+        </div>
 
-          <div className="flex flex-col w-[280px] items-center gap-[30px] absolute top-[326px] left-[724px]">
+        {/* Login Form Container */}
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+          <div className="flex flex-col w-full max-w-[280px] items-center gap-[30px]">
             <Card className="flex flex-col items-start gap-[25px] p-[15px] relative self-stretch w-full flex-[0_0_auto] bg-[#f9f9f9] rounded-[17px_23px_23px_23px] border-2 border-solid border-[#d7dbdd] shadow-[0px_2px_42px_#00000026]">
               <CardContent className="p-0 space-y-[25px] w-full">
                 <div className="relative w-fit mt-[-2.00px] font-sans font-bold text-black text-xl tracking-[0] leading-normal whitespace-nowrap">
@@ -82,12 +120,12 @@ export const Login = (): JSX.Element => {
                       Username / email
                     </label>
 
-                    <div className="flex w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
+                    <div className="flex w-full sm:w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
+                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal flex-1"
                         placeholder="Enter your email"
                         required
                       />
@@ -99,18 +137,18 @@ export const Login = (): JSX.Element => {
                       Password
                     </label>
 
-                    <div className="flex w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
+                    <div className="flex w-full sm:w-[250px] h-[42px] items-center gap-2.5 px-2.5 py-[7px] relative bg-white rounded border border-solid border-[#d7dbdd]">
                       <Input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal"
+                        className="border-0 p-0 h-auto shadow-none font-sans font-normal text-black text-sm tracking-[0] leading-normal flex-1"
                         placeholder="Enter your password"
                         required
                       />
 
                       <div className="inline-flex items-center justify-center relative flex-[0_0_auto]">
-                        <EyeOffIcon className="w-7 h-7" />
+                        <EyeOffIcon className="w-5 h-5 sm:w-7 sm:h-7" />
                       </div>
                     </div>
                   </div>
@@ -158,52 +196,18 @@ export const Login = (): JSX.Element => {
             >
               <div className="inline-flex items-center justify-center relative flex-[0_0_auto] mt-[-4.50px] mb-[-4.50px]">
                 <img
-                  className="relative w-7 h-7"
+                  className="relative w-5 h-5 sm:w-7 sm:h-7"
                   alt="Microsoft windows"
                   src="/figmaAssets/microsoft-windows.svg"
                 />
               </div>
 
-              <span className="font-sans font-medium text-neutral-800 text-base tracking-[0] leading-normal whitespace-nowrap">
+              <span className="font-sans font-medium text-neutral-800 text-sm sm:text-base tracking-[0] leading-normal whitespace-nowrap">
                 Sign in with Microsoft
               </span>
             </Button>
           </div>
         </div>
-
-        <header className="flex w-full h-[95px] items-center justify-between px-[25px] py-[21px] absolute top-0 left-0 bg-[#fefefe] border-b-2 border-[#f9f9f9]">
-          <div className="inline-flex items-center gap-[19px] relative flex-[0_0_auto] mt-[-2.22px] mb-[-2.22px]">
-            <img
-              className="relative flex-[0_0_auto]"
-              alt="Morae logo"
-              src="/figmaAssets/morae-logo.svg"
-            />
-
-            <div className="relative w-[52px] h-[52px] bg-[#d3e4f3] rounded-[26px]">
-              <img
-                className="absolute w-[49px] h-10 top-3 left-[3px]"
-                alt="Subtract"
-                src="/figmaAssets/subtract.svg"
-              />
-            </div>
-
-            <div className="flex flex-col w-60 items-start gap-[3px] relative">
-              <div className="relative self-stretch mt-[-1.00px] font-sans font-bold text-black text-xl tracking-[0] leading-normal">
-                PDF → LEDES
-              </div>
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            className="inline-flex h-[37px] items-center gap-2.5 p-2.5 relative flex-[0_0_auto] rounded-[5px]"
-          >
-            <AlertTriangleIcon className="w-7 h-7" />
-            <span className="font-sans font-normal text-[#53585a] text-sm tracking-[0] leading-normal">
-              Support
-            </span>
-          </Button>
-        </header>
       </div>
     </div>
   );
