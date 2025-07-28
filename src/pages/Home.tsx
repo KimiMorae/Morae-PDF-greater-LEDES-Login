@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
+import { FileDetailsModal } from "@/components/FileDetailsModal";
 import { useState } from "react";
 import {
   uploadFiles,
@@ -27,7 +28,6 @@ interface ProcessedFile {
   dateUploaded: string;
   invoiceName: string;
   invoices: number;
-  dateUploaded: string;
   status: "Success" | "Error";
   fileIds: number[];
   ledeResults?: any[];
@@ -43,14 +43,40 @@ export const Home = (): JSX.Element => {
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<string>("");
+  const [selectedFileForDetails, setSelectedFileForDetails] =
+    useState<ProcessedFile | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
   const isMultiple = selectedFiles.length > 1;
-  const buttonText = isMultiple ? "Convert All to LEDES" : "Convert to LEDES";
+  const getButtonText = () => {
+    if (selectedFiles.length === 0) {
+      return "Import from Cloud Repository";
+    }
+    if (isConverting && processingStep) {
+      return processingStep;
+    }
+    if (isConverting) {
+      return isMultiple
+        ? "Converting All to LEDES..."
+        : "Converting to LEDES...";
+    }
+    return isMultiple ? "Convert All to LEDES" : "Convert to LEDES";
+  };
+  const buttonText = getButtonText();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     setSelectedFiles(files);
     setUploadError(null); // Clear any previous errors
+  };
+
+  const handleFileInputClick = () => {
+    const fileInput = document.getElementById("file-input") as HTMLInputElement;
+    if (fileInput) {
+      fileInput.click();
+    }
   };
 
   const handleDrop = (event: React.DragEvent) => {
@@ -148,7 +174,19 @@ export const Home = (): JSX.Element => {
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles((files) => files.filter((_, i) => i !== index));
+    setSelectedFiles((files) => {
+      const newFiles = files.filter((_, i) => i !== index);
+      // Clear the file input value if no files remain
+      if (newFiles.length === 0) {
+        const fileInput = document.getElementById(
+          "file-input"
+        ) as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = "";
+        }
+      }
+      return newFiles;
+    });
   };
 
   // Extract invoice name from LEDE file path
@@ -189,9 +227,28 @@ export const Home = (): JSX.Element => {
     }
   };
 
-  // Filter processed files based on search term
-  const filteredProcessedFiles = processedFiles.filter((file) =>
-    file.uploadReference.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleViewDetails = (file: ProcessedFile) => {
+    setSelectedFileForDetails(file);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedFileForDetails(null);
+  };
+
+  const handleDropdownClick = (fileId: string, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setDropdownPosition({
+      top: rect.bottom + 4,
+      left: rect.right - 160, // 160px is dropdown width (w-40)
+    });
+    setActiveDropdown(activeDropdown === fileId ? null : fileId);
+  };
+
+  // Filter processed files based on search term (search by ID reference OR file name)
+  const filteredProcessedFiles = processedFiles.filter(
+    (file) =>
+      file.uploadReference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      file.invoiceName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Determine if we should show the conversion instructions or processed files
@@ -199,17 +256,23 @@ export const Home = (): JSX.Element => {
 
   return (
     <div className="bg-white min-h-screen w-full flex flex-col">
-      <Header showAuthButtons={true} />
+      <Header
+        showAuthButtons={true}
+        onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
 
       {/* Main content area with sidebar */}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 ml-[15%] bg-[url(/figmaAssets/background-image.png)] bg-cover bg-center overflow-auto">
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(false)}
+        />
+        <div className="flex-1 lg:ml-[15%] bg-[url(/figmaAssets/background-image.png)] bg-cover bg-center overflow-auto">
           <div className="pt-8 px-8">
-            <div className="font-sans font-bold text-black text-3xl tracking-[0] leading-normal mb-2">
+            <div className="font-sans font-bold text-black text-3xl tracking-[0] leading-normal">
               Let&apos;s get started
             </div>
-            <div className="font-sans text-gray-600 text-md tracking-[0] leading-normal mb-8">
+            <div className="font-sans text-gray-600 text-md tracking-[0] leading-normal mb-6">
               Convert your PDF documents to compliant LEDES files
             </div>
 
@@ -225,7 +288,7 @@ export const Home = (): JSX.Element => {
                   </div>
                   {/* File Upload Area */}
                   <div
-                    className="flex flex-col items-center justify-center w-full h-48 bg-white rounded-[12px] cursor-pointer transition-all duration-200 group"
+                    className="flex flex-col items-center justify-center w-full h-20 bg-white rounded-[12px] cursor-pointer transition-all duration-200 group"
                     style={{
                       border: "2px dashed #e5e7eb",
                       borderSpacing: "8px",
@@ -259,28 +322,39 @@ export const Home = (): JSX.Element => {
                       className="hidden"
                     />
 
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[8px] flex items-center justify-center">
-                        <img
-                          src="/figmaAssets/upload-icon.svg"
-                          alt="Upload icon"
-                          className="w-6 h-6 sm:w-8 sm:h-8"
-                        />
-                      </div>
-
-                      <div className="text-center px-4">
-                        <div className="font-sans font-normal text-gray-600 text-sm tracking-[0] leading-normal">
-                          Drag & drop or click here to select a file
+                    <div className="flex items-center px-4">
+                      {/* Icon Column */}
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[8px] flex items-center justify-center">
+                          <img
+                            src="/figmaAssets/upload-icon.svg"
+                            alt="Upload icon"
+                            className="w-6 h-6 sm:w-8 sm:h-8"
+                          />
                         </div>
                       </div>
 
-                      <Button
-                        type="button"
-                        className="h-10 sm:h-[43px] text-sm px-4 sm:px-6 py-2 sm:py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white sm:text-base"
-                      >
-                        Import from cloud repository
-                      </Button>
+                      {/* Text Column */}
+                      <div className="flex-1 text-center">
+                        <div className="font-sans font-normal text-gray-300 text-sm tracking-[0] leading-normal">
+                          Drag & drop or click here to select a file
+                        </div>
+                      </div>
                     </div>
+                  </div>
+                  {/* Convert Button */}
+                  <div className="flex items-center justify-center w-full mt-6">
+                    <Button
+                      onClick={
+                        selectedFiles.length === 0
+                          ? handleFileInputClick
+                          : handleConvert
+                      }
+                      disabled={isConverting}
+                      className="h-10 sm:h-[43px] px-4 sm:px-6 py-2 sm:py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-sm sm:text-base disabled:opacity-50"
+                    >
+                      {buttonText}
+                    </Button>
                   </div>
 
                   {/* Selected Files List */}
@@ -343,19 +417,6 @@ export const Home = (): JSX.Element => {
                       </span>
                     </div>
                   )}
-
-                  {/* Convert Button */}
-                  <div className="flex items-center justify-end w-full mt-6">
-                    <Button
-                      onClick={handleConvert}
-                      disabled={selectedFiles.length === 0 || isConverting}
-                      className="h-10 sm:h-[43px] px-4 sm:px-6 py-2 sm:py-3 bg-neutral-800 rounded-[9px] shadow-[0px_2px_4px_#0000000d] font-sans font-medium text-white text-sm sm:text-base disabled:opacity-50"
-                    >
-                      {isConverting
-                        ? processingStep || "Processing..."
-                        : buttonText}
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -443,72 +504,79 @@ export const Home = (): JSX.Element => {
                     <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       type="text"
-                      placeholder="Search..."
+                      placeholder="Search by ID or file name..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 h-10 border border-gray-300 rounded-lg font-sans text-sm w-full"
+                      className="pl-10 h-10 border border-gray-300 rounded-sm font-sans text-sm w-full"
                     />
                   </div>
                   <Button
-                    variant="outline"
+                    variant="link"
                     size="sm"
-                    className="h-10 px-3 border border-gray-300 rounded-lg w-full sm:w-auto"
+                    className="h-10 px-3 rounded-lg w-full sm:w-auto"
                   >
-                    <FilterIcon className="w-4 h-4" />
+                    <img
+                      className="w-4 h-4"
+                      alt="Profile"
+                      src="/figmaAssets/filter.svg"
+                    />
                     <span className="ml-2 sm:hidden">Filter</span>
                   </Button>
                 </div>
 
                 {/* Files Table */}
-                <Card className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <CardContent className="p-0">
-                    {/* Table Header - Hidden on mobile, shown on larger screens */}
-                    <div className="hidden sm:flex p-4 border-b border-gray-200 bg-gray-50">
-                      <div className="flex-shrink-0 w-20 lg:w-24 font-sans font-semibold text-gray-700 text-sm">
+                <div className="overflow-x-auto w-[85%]">
+                  <div className="bg-white rounded-lg p-0 min-w-[600px]">
+                    {/* Table Header */}
+                    <div className="flex p-4">
+                      <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
                         File ID
                       </div>
-                      <div className="flex-1 px-4 font-sans font-semibold text-gray-700 text-sm">
-                        Invoice Name
+                      <div className="flex-[3] font-sans font-bold text-gray-700 text-sm">
+                        File Name
                       </div>
-                      <div className="flex-shrink-0 w-20 font-sans font-semibold text-gray-700 text-sm">
-                        Invoices
-                      </div>
-                      <div className="flex-shrink-0 w-32 font-sans font-semibold text-gray-700 text-sm">
+                      <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
                         Date Uploaded
                       </div>
-                      <div className="flex-shrink-0 w-16 lg:w-20 font-sans font-semibold text-gray-700 text-sm">
+                      <div className="flex-[1] font-sans font-bold text-gray-700 text-sm text-center">
+                        Invoices
+                      </div>
+                      <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
                         Status
                       </div>
-                      <div className="flex-shrink-0 w-12 font-sans font-semibold text-gray-700 text-sm">
+                      <div className="flex-shrink-0 w-12 font-sans font-bold text-gray-700 text-sm">
                         {/* Actions column - no header */}
                       </div>
                     </div>
 
                     {/* Table Rows */}
-                    <div className="max-h-64 sm:max-h-80 overflow-y-auto">
+                    <div
+                      className="max-h-64 sm:max-h-80 overflow-y-auto"
+                      style={{ overflow: "visible" }}
+                    >
                       {filteredProcessedFiles.map((file, index) => (
                         <div
                           key={file.id}
-                          className={`p-4 border-b border-gray-100 hover:bg-blue-50 ${
-                            index === 0 ? "bg-gray-50" : ""
+                          className={`p-4 hover:bg-blue-50 ${
+                            index % 2 === 1 ? "bg-gray-50" : ""
                           }`}
                         >
-                          {/* Desktop Layout */}
-                          <div className="hidden sm:flex items-center">
-                            <div className="flex-shrink-0 w-20 lg:w-24 font-sans font-medium text-gray-700 text-sm">
+                          {/* Table Layout */}
+                          <div className="flex items-center">
+                            <div className="flex-[2] font-sans font-normal text-gray-700 text-sm">
                               {file.uploadReference}
                             </div>
-                            <div className="flex-1 px-4 font-sans text-gray-600 text-sm truncate">
+                            <div className="flex-[3] font-sans font-normal text-gray-600 text-sm truncate">
                               {file.invoiceName}
                             </div>
-                            <div className="flex-shrink-0 w-20 font-sans text-gray-600 text-sm text-center">
-                              {file.invoices}
-                            </div>
-                            <div className="flex-shrink-0 w-32 font-sans text-gray-600 text-sm">
+                            <div className="flex-[2] font-sans font-normal text-gray-600 text-sm">
                               {file.dateUploaded}
                             </div>
+                            <div className="flex-[1] font-sans font-normal text-gray-600 text-sm text-center">
+                              {file.invoices}
+                            </div>
                             <div
-                              className={`flex-shrink-0 w-16 lg:w-20 font-sans text-sm ${
+                              className={`flex-[2] font-sans font-normal text-sm ${
                                 file.status === "Success"
                                   ? "text-gray-700"
                                   : "text-gray-600"
@@ -518,96 +586,17 @@ export const Home = (): JSX.Element => {
                             </div>
                             <div className="flex-shrink-0 w-12 flex justify-center">
                               {file.status === "Success" && file.fileIds && (
-                                <div className="relative group">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-gray-100"
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                  <div className="absolute right-0 top-8 w-40 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                                    <button
-                                      onClick={() => {
-                                        /* View Details handler */
-                                      }}
-                                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                      View Details
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        handleDownloadProcessed(file.fileIds)
-                                      }
-                                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Download className="w-4 h-4" />
-                                      Download ZIP
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Mobile Layout */}
-                          <div className="sm:hidden space-y-3">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="font-sans font-medium text-gray-700 text-sm">
-                                  {file.uploadReference}
-                                </div>
-                                <div className="font-sans text-gray-600 text-sm mt-1">
-                                  {file.invoiceName}
-                                </div>
-                                <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                                  <span>{file.invoices} invoices</span>
-                                  <span>{file.dateUploaded}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`font-sans text-sm ${
-                                    file.status === "Success"
-                                      ? "text-gray-700"
-                                      : "text-gray-600"
-                                  }`}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 hover:bg-gray-100"
+                                  onClick={(e) =>
+                                    handleDropdownClick(file.id, e)
+                                  }
                                 >
-                                  {file.status}
-                                </div>
-                                {file.status === "Success" && file.fileIds && (
-                                  <div className="relative group">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-gray-100"
-                                    >
-                                      <MoreHorizontal className="w-4 h-4" />
-                                    </Button>
-                                    <div className="absolute right-0 top-8 w-40 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                                      <button
-                                        onClick={() => {
-                                          /* View Details handler */
-                                        }}
-                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                        View Details
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          handleDownloadProcessed(file.fileIds)
-                                        }
-                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                      >
-                                        <Download className="w-4 h-4" />
-                                        Download ZIP
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -621,13 +610,64 @@ export const Home = (): JSX.Element => {
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Dropdown Menu - Positioned absolutely */}
+      {activeDropdown && (
+        <>
+          <div
+            className="fixed inset-0 z-[99998]"
+            onClick={() => setActiveDropdown(null)}
+          />
+          <div
+            className="fixed w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[99999]"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+            }}
+          >
+            <button
+              onClick={() => {
+                const file = filteredProcessedFiles.find(
+                  (f) => f.id === activeDropdown
+                );
+                if (file) handleViewDetails(file);
+                setActiveDropdown(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-md"
+            >
+              <Eye className="w-4 h-4" />
+              View Details
+            </button>
+            <button
+              onClick={() => {
+                const file = filteredProcessedFiles.find(
+                  (f) => f.id === activeDropdown
+                );
+                if (file) handleDownloadProcessed(file.fileIds);
+                setActiveDropdown(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-md"
+            >
+              <Download className="w-4 h-4" />
+              Download ZIP
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* File Details Modal */}
+      <FileDetailsModal
+        file={selectedFileForDetails}
+        onClose={handleCloseModal}
+        onDownload={handleDownloadProcessed}
+      />
     </div>
   );
 };
