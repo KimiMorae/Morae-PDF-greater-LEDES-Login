@@ -22,7 +22,7 @@ interface FilesTableProps {
   files: ProcessedFile[];
   searchTerm: string;
   onViewDetails: (file: ProcessedFile) => void;
-  onDownload: (fileIds: number[]) => void;
+  onDownload: (fileIds: number[], isZipUpload?: boolean) => void;
 }
 
 export const FilesTable = ({
@@ -49,9 +49,6 @@ export const FilesTable = ({
         <div className="bg-white rounded-lg p-0 min-w-[600px]">
           {/* Table Header */}
           <div className="flex p-4">
-            <div className="flex-[2] font-sans font-bold text-gray-700 text-sm">
-              File ID
-            </div>
             <div className="flex-[3] font-sans font-bold text-gray-700 text-sm">
               File Name
             </div>
@@ -83,9 +80,6 @@ export const FilesTable = ({
               >
                 {/* Table Layout */}
                 <div className="flex items-center">
-                  <div className="flex-[2] font-sans font-normal text-gray-700 text-sm">
-                    {file.uploadReference}
-                  </div>
                   <div className="flex-[3] font-sans font-normal text-gray-600 text-sm truncate">
                     {file.invoiceName}
                   </div>
@@ -139,7 +133,7 @@ export const FilesTable = ({
             onClick={() => setActiveDropdown(null)}
           />
           <div
-            className="fixed w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[99999]"
+            className="fixed w-50 bg-white border border-gray-200 rounded-md shadow-lg z-[99999]"
             style={{
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
@@ -159,13 +153,15 @@ export const FilesTable = ({
             <button
               onClick={() => {
                 const file = files.find((f) => f.id === activeDropdown);
-                if (file) onDownload(file.fileIds);
+                if (file) onDownload(file.fileIds, file.isZipUpload);
                 setActiveDropdown(null);
               }}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-md"
             >
               <Download className="w-4 h-4" />
-              Download ZIP
+              {files.find((f) => f.id === activeDropdown)?.isZipUpload
+                ? "Download ZIP"
+                : "Download LEDES"}
             </button>
           </div>
         </>

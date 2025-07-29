@@ -78,9 +78,12 @@ export const Home = (): JSX.Element => {
       setSelectedFiles(state.selectedFiles);
   };
 
-  const handleDownloadProcessed = async (fileIds: number[]) => {
+  const handleDownloadProcessed = async (
+    fileIds: number[],
+    isZipUpload?: boolean
+  ) => {
     try {
-      await downloadProcessedFilesZip(fileIds);
+      await downloadProcessedFilesZip(fileIds, isZipUpload || false);
     } catch (error) {
       toast({
         title: "Download Failed",

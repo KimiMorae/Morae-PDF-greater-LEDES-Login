@@ -27,7 +27,7 @@ interface ConditionalContentProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onViewDetails: (file: ProcessedFile) => void;
-  onDownload: (fileIds: number[]) => void;
+  onDownload: (fileIds: number[], isZipUpload?: boolean) => void;
 }
 
 export const ConditionalContent = ({

@@ -105,18 +105,38 @@ export const UploadCard = ({
       );
       const allLedeResults = ledeResults;
 
-      // Calculate total invoices across all valid files
-      const totalInvoices = allLedeResults.length || validUploadedFiles.length;
+      // If no files were uploaded (all duplicates), don't add to processed files table
+      if (allFileIds.length === 0) {
+        onUploadStateChange({
+          selectedFiles: [],
+          uploadError: null,
+          processingStep: "",
+        });
+        return;
+      }
 
-      // Determine the display name
+      // Calculate total invoices - count valid LEDES files that will be shown in modal
+      const validLedesFiles = validUploadedFiles.filter(
+        (uploadedFile: UploadedFile) => {
+          // Find corresponding LEDE result for this uploaded file
+          const fileLedeResult = allLedeResults.find(
+            (lede: any) => lede.file_id === uploadedFile.file_id
+          );
+          // Only count files that have successful LEDE results
+          return fileLedeResult && fileLedeResult.status === "success";
+        }
+      );
+
+      const totalInvoices = validLedesFiles.length;
+
       let displayName: string;
       if (isZipUpload) {
         // For zip files, use the zip file name
         displayName = uploadedFileName.replace(".zip", "");
       } else if (selectedFiles.length === 1) {
-        // For single PDF files, extract invoice name from LEDE results or use filename
-        if (allLedeResults.length > 0 && allLedeResults[0].lede_xlsx_file) {
-          displayName = extractInvoiceName(allLedeResults[0].lede_xlsx_file);
+        // For single PDF files, use the actual invoice name from LEDE results
+        if (allLedeResults.length > 0 && allLedeResults[0].invoice_name) {
+          displayName = allLedeResults[0].invoice_name.replace(/\.pdf$/i, "");
         } else {
           displayName = uploadedFileName.replace(".pdf", "");
         }
@@ -188,16 +208,6 @@ export const UploadCard = ({
       }
     }
     onFileSelect(newFiles);
-  };
-
-  // Extract invoice name from LEDE file path
-  const extractInvoiceName = (ledeFilePath: string): string => {
-    const filename = ledeFilePath.split("/").pop() || "";
-    // Remove "lede_" prefix and file extension
-    const invoiceName = filename
-      .replace(/^lede_/, "")
-      .replace(/\.(xlsx|json)$/, "");
-    return invoiceName || "Unknown Invoice";
   };
 
   return (

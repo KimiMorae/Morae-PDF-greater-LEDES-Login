@@ -271,59 +271,9 @@ async function generateLede(
   return result;
 }
 
-// Download functions
-export async function downloadOriginalFile(fileId: number): Promise<void> {
-  const accessToken = getToken();
-  const clientId = getClientId();
-  const clientSecret = getClientSecret();
-
-  if (!accessToken || !clientId || !clientSecret) {
-    throw new Error("Authentication tokens missing. Please login again.");
-  }
-
-  const response = await fetch(
-    `${API_BASE_URL}/core/download/?file_id=${fileId}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "X-Client-ID": clientId,
-        "X-Client-Secret": clientSecret,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: "Download failed" }));
-    throw new Error(error.error || `Download failed: ${response.status}`);
-  }
-
-  // Get filename from Content-Disposition header or use default
-  const contentDisposition = response.headers.get("Content-Disposition");
-  let filename = `original_file_${fileId}.pdf`;
-  if (contentDisposition) {
-    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-    if (filenameMatch) {
-      filename = filenameMatch[1];
-    }
-  }
-
-  // Create blob and download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-}
-
 export async function downloadProcessedFilesZip(
-  fileIds: number[]
+  fileIds: number[],
+  isZipUpload: boolean = false
 ): Promise<void> {
   const accessToken = getToken();
   const clientId = getClientId();
@@ -333,11 +283,12 @@ export async function downloadProcessedFilesZip(
     throw new Error("Authentication tokens missing. Please login again.");
   }
 
-  if (fileIds.length === 1) {
+  if (fileIds.length === 1 && !isZipUpload) {
+    // Single PDF upload  download individual LEDES file (not zipped)
     const fileId = fileIds[0];
 
     const response = await fetch(
-      `${API_BASE_URL}/core/download-zip/?file_id=${fileId}`,
+      `${API_BASE_URL}/core/download-zip-only-ledes/?file_id=${fileId}`,
       {
         method: "GET",
         headers: {
@@ -351,8 +302,21 @@ export async function downloadProcessedFilesZip(
     if (!response.ok) {
       const error = await response
         .json()
-        .catch(() => ({ error: "ZIP download failed" }));
-      throw new Error(error.error || `ZIP download failed: ${response.status}`);
+        .catch(() => ({ error: "LEDES file download failed" }));
+      throw new Error(
+        error.error || `LEDES file download failed: ${response.status}`
+      );
+    }
+
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = `ledes_file_${fileId}.xlsx`; // Change extension to xlsx for individual file
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch) {
+        // If server provides filename, use it but ensure it's not a zip
+        const serverFilename = filenameMatch[1];
+        filename = serverFilename.replace(/\.zip$/, ".xlsx");
+      }
     }
 
     // Create blob and download
@@ -360,22 +324,61 @@ export async function downloadProcessedFilesZip(
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `processed_files_${fileId}.zip`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   } else {
-    // For multiple files, download each as separate ZIP files
-    for (const fileId of fileIds) {
-      await downloadProcessedFilesZip([fileId]);
-      // Add small delay between downloads to avoid overwhelming the server
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    // ZIP folder upload or multiple files - download as ZIP
+    const fileIdsParam = fileIds.join(",");
+
+    const response = await fetch(
+      `${API_BASE_URL}/core/download-zip-list-only-ledes/?file_ids=${fileIdsParam}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "X-Client-ID": clientId,
+          "X-Client-Secret": clientSecret,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: "LEDES ZIP download failed" }));
+      throw new Error(
+        error.error || `LEDES ZIP download failed: ${response.status}`
+      );
     }
+
+    // Get filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = `ledes_files_${
+      fileIds.length > 1 ? "multi" : fileIds[0]
+    }.zip`;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Create blob and download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 }
 
-// File upload function with retry limit to prevent infinite loops and sequential processing
 export async function uploadFiles(
   files: File[],
   projectId: string = "iag",

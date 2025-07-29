@@ -18,7 +18,7 @@ interface ProcessedFile {
 interface FileDetailsModalProps {
   file: ProcessedFile | null;
   onClose: () => void;
-  onDownload: (fileIds: number[]) => void;
+  onDownload: (fileIds: number[], isZipUpload?: boolean) => void;
 }
 
 export const FileDetailsModal = ({
@@ -34,30 +34,36 @@ export const FileDetailsModal = ({
       (uploadedFile: any) => !uploadedFile.filename.startsWith("._")
     ) || [];
 
-  const ledesFiles = validUploadedFiles.map(
-    (uploadedFile: any, index: number) => {
-      // Find the corresponding LEDE result for this specific uploaded file
-      const fileLedeResult = file.ledeResults?.find(
-        (lede: any) => lede.file_id === uploadedFile.file_id
-      );
+  const ledesFiles = validUploadedFiles.map((uploadedFile: any) => {
+    // Find the corresponding LEDE result for this specific uploaded file
+    const fileLedeResult = file.ledeResults?.find(
+      (lede: any) => lede.file_id === uploadedFile.file_id
+    );
 
-      // Extract XLSX filename from the API response
-      let ledesFileName = `${uploadedFile.filename.replace(
+    let ledesFileName: string;
+    if (fileLedeResult?.invoice_name) {
+      const invoiceName = fileLedeResult.invoice_name.replace(/\.pdf$/i, "");
+      ledesFileName = `${invoiceName}_LEDES.xlsx`;
+    } else if (fileLedeResult?.lede_xlsx_file) {
+      // Fallback to extracting from file path
+      const xlsxPath = fileLedeResult.lede_xlsx_file;
+      ledesFileName =
+        xlsxPath.split("/").pop() ||
+        `${uploadedFile.filename.replace(/\.pdf$/i, "")}_LEDES.xlsx`;
+    } else {
+      // Final fallback to uploaded filename
+      ledesFileName = `${uploadedFile.filename.replace(
         /\.pdf$/i,
         ""
       )}_LEDES.xlsx`;
-      if (fileLedeResult?.lede_xlsx_file) {
-        const xlsxPath = fileLedeResult.lede_xlsx_file;
-        ledesFileName = xlsxPath.split("/").pop() || ledesFileName;
-      }
-
-      return {
-        name: ledesFileName,
-        dateCreated: file.dateUploaded,
-        status: fileLedeResult?.status || file.status,
-      };
     }
-  );
+
+    return {
+      name: ledesFileName,
+      dateCreated: file.dateUploaded,
+      status: fileLedeResult?.status || file.status,
+    };
+  });
 
   // Fallback if no valid files found
   const finalLedesFiles =
@@ -87,7 +93,7 @@ export const FileDetailsModal = ({
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">
-              {file.uploadReference} - LEDES
+              {file.invoiceName} - LEDES
             </h2>
             <button
               onClick={onClose}
@@ -143,7 +149,7 @@ export const FileDetailsModal = ({
           </Button>
           <Button
             onClick={() => {
-              onDownload(file.fileIds);
+              onDownload(file.fileIds, file.isZipUpload);
               onClose();
             }}
             className="px-4 py-2 bg-neutral-800 text-white hover:bg-neutral-700"
@@ -153,7 +159,7 @@ export const FileDetailsModal = ({
               alt="Profile"
               src="/figmaAssets/zip-file.svg"
             />
-            Download ZIP
+            {file.isZipUpload ? "Download ZIP" : "Download LEDES"}
           </Button>
         </div>
       </div>
